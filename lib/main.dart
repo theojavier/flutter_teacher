@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MyApp());
@@ -6,117 +7,324 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Faculty Management',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue),
+      initialRoute: '/',
+      routes: {
+        '/': (_) => const LoginPage(),
+        '/dashboard': (_) => const DashboardPage(),
+        '/forgot-password': (_) => const ForgotPasswordPage(),
+      },
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _idController = TextEditingController();
+  final _otpController = TextEditingController();
+  bool _loading = false;
+  bool _rememberMe = false;
+  bool _otpSent = false; // start with false; user sends OTP first
+  String? _generatedOtp; // Simulated OTP for demo
+  int _otpExpirySeconds = 300; // 5 minutes expiry (demo)
 
-  void _incrementCounter() {
+  final _emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+
+  void _sendOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    // Simulate API call to send OTP
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    _generatedOtp = '123456'; // demo OTP
+
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _loading = false;
+      _otpSent = true;
+      _otpExpirySeconds = 300;
     });
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('OTP Sent'),
+        content: Text('Your OTP is: $_generatedOtp\n(Valid for 5 minutes)'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+
+    _startOtpTimer();
+  }
+
+  void _verifyOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_otpController.text.trim() != _generatedOtp) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid OTP. Please try again.')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
+
+    setState(() => _loading = false);
+    Navigator.of(context).pushReplacementNamed('/dashboard');
+  }
+
+  void _startOtpTimer() {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      if (_otpExpirySeconds > 0) {
+        setState(() => _otpExpirySeconds--);
+        _startOtpTimer();
+      } else {
+        setState(() {
+          _otpSent = false;
+          _generatedOtp = null;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('OTP expired. Please request a new one.'),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void _forgotPassword() {
+    Navigator.of(context).pushNamed('/forgot-password');
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _otpController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Faculty Login'),
+        backgroundColor: theme.primaryColor,
+        centerTitle: true,
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Faculty Management',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.primaryColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Faculty / Teacher Login',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Email field
+                      TextFormField(
+                        controller: _idController,
+                        decoration: const InputDecoration(
+                          labelText: 'Faculty ID or Email',
+                          hintText: 'e.g., teacher@school.com',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.email),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your school email';
+                          }
+                          if (!_emailRegex.hasMatch(value)) {
+                            return 'Please enter a valid email address';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // OTP field (visible if _otpSent)
+                      if (_otpSent) ...[
+                        TextFormField(
+                          controller: _otpController,
+                          decoration: InputDecoration(
+                            labelText: 'Enter OTP',
+                            hintText: '6-digit code',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.lock),
+                            suffixText:
+                                'Expires in ${_otpExpirySeconds ~/ 60}:${(_otpExpirySeconds % 60).toString().padLeft(2, '0')}',
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(6),
+                          ],
+                          validator: (value) {
+                            if (_otpSent) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter the OTP';
+                              }
+                              if (value.length != 6) {
+                                return 'OTP must be 6 digits';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberMe,
+                            onChanged: (value) {
+                              setState(() => _rememberMe = value ?? false);
+                            },
+                          ),
+                          const Text('Remember Me'),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      _loading
+                          ? const CircularProgressIndicator()
+                          : SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _loading
+                                    ? null
+                                    : (_otpSent ? _verifyOtp : _sendOtp),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  backgroundColor: theme.primaryColor,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  _otpSent ? 'Verify OTP' : 'Send OTP',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ),
+
+                      if (_otpSent) ...[
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _otpSent = false;
+                              _generatedOtp = null;
+                              _otpController.clear();
+                            });
+                          },
+                          child: Text(
+                            'Resend OTP',
+                            style: TextStyle(color: theme.primaryColor),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _forgotPassword,
+                        child: Text(
+                          'Forgot Password?',
+                          style: TextStyle(color: theme.primaryColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+class DashboardPage extends StatelessWidget {
+  const DashboardPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard'), centerTitle: true),
+      body: const Center(child: Text('Welcome to the Dashboard')),
+    );
+  }
+}
+
+class ForgotPasswordPage extends StatelessWidget {
+  const ForgotPasswordPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Forgot Password'), centerTitle: true),
+      body: const Center(child: Text('Forgot Password Page (stub)')),
     );
   }
 }

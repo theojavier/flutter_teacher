@@ -1,0 +1,14 @@
+{
+  "name": "flutter_teacher_helpers",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-tests.ps1",
+    "test:linux": "flutter test -r expanded",
+    "format": "bash ./scripts/format.sh",
+    "format:check": "bash ./scripts/format.sh"
+  },
+  "dependencies": {
+    "firebase": "^12.4.0"
+  }
+}
