@@ -42,6 +42,46 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyD3QA26qrdwXjt1eRn_OBqX0zw8kbiyV3o',
+    appId: '1:348602182315:web:e5b92040815a2ef94665ee',
+    messagingSenderId: '348602182315',
+    projectId: 'rd-final',
+    authDomain: 'rd-final.firebaseapp.com',
+    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'rd-final.firebasestorage.app',
+    measurementId: 'G-WBN9RY3QKG',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyD5faRhRRuQ_k1NwbqFpPwtVpc1VD1JXaI',
+    appId: '1:348602182315:android:f2bc9c87addef5b84665ee',
+    messagingSenderId: '348602182315',
+    projectId: 'rd-final',
+    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'rd-final.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBcOgwwLzoQqIu5MmQuELDtp_btz7JMo3I',
+    appId: '1:348602182315:ios:f2d73785bd0f81144665ee',
+    messagingSenderId: '348602182315',
+    projectId: 'rd-final',
+    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'rd-final.firebasestorage.app',
+    iosBundleId: 'com.example.myFlutterApp',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyBcOgwwLzoQqIu5MmQuELDtp_btz7JMo3I',
+    appId: '1:348602182315:ios:f2d73785bd0f81144665ee',
+    messagingSenderId: '348602182315',
+    projectId: 'rd-final',
+    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'rd-final.firebasestorage.app',
+    iosBundleId: 'com.example.myFlutterApp',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyD3QA26qrdwXjt1eRn_OBqX0zw8kbiyV3o',
     appId: '1:348602182315:web:6e1d021b8661ad474665ee',
     messagingSenderId: '348602182315',
     projectId: 'rd-final',
@@ -51,43 +91,4 @@ class DefaultFirebaseOptions {
     measurementId: 'G-SM6FCCPHMW',
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyD5faRhRRuQ_k1NwbqFpPwtVpc1VD1JXaI',
-    appId: '1:348602182315:android:d19389e5356ffa054665ee',
-    messagingSenderId: '348602182315',
-    projectId: 'rd-final',
-    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'rd-final.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBcOgwwLzoQqIu5MmQuELDtp_btz7JMo3I',
-    appId: '1:348602182315:ios:4d45a2af8f1de3584665ee',
-    messagingSenderId: '348602182315',
-    projectId: 'rd-final',
-    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'rd-final.firebasestorage.app',
-    iosBundleId: 'com.example.flutterTeacher',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBcOgwwLzoQqIu5MmQuELDtp_btz7JMo3I',
-    appId: '1:348602182315:ios:4d45a2af8f1de3584665ee',
-    messagingSenderId: '348602182315',
-    projectId: 'rd-final',
-    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'rd-final.firebasestorage.app',
-    iosBundleId: 'com.example.flutterTeacher',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyD3QA26qrdwXjt1eRn_OBqX0zw8kbiyV3o',
-    appId: '1:348602182315:web:06ced259a21021724665ee',
-    messagingSenderId: '348602182315',
-    projectId: 'rd-final',
-    authDomain: 'rd-final.firebaseapp.com',
-    databaseURL: 'https://rd-final-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'rd-final.firebasestorage.app',
-    measurementId: 'G-444R1CSP5B',
-  );
 }
