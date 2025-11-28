@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 
 class ForgotPage extends StatefulWidget {
   const ForgotPage({super.key});
@@ -10,7 +11,7 @@ class ForgotPage extends StatefulWidget {
 }
 
 class _ForgotPageState extends State<ForgotPage> {
-  final TextEditingController studentIdController = TextEditingController();
+  final TextEditingController teacherIdController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final FirebaseFirestore db = FirebaseFirestore.instance;
   final FirebaseAuth auth = FirebaseAuth.instance;
@@ -18,11 +19,11 @@ class _ForgotPageState extends State<ForgotPage> {
   bool isLoading = false;
 
   Future<void> _sendResetEmail() async {
-    final studentId = studentIdController.text.trim();
+    final teacherId = teacherIdController.text.trim();
     final email = emailController.text.trim();
 
-    if (studentId.isEmpty) {
-      _showError("Student ID required");
+    if (teacherId.isEmpty) {
+      _showError("Teacher ID required");
       return;
     }
     if (email.isEmpty) {
@@ -33,15 +34,15 @@ class _ForgotPageState extends State<ForgotPage> {
     setState(() => isLoading = true);
 
     try {
-      // Verify Student ID exists first
+      // Verify Teacher ID exists
       final query = await db
           .collection("users")
-          .where("studentId", isEqualTo: studentId)
+          .where("teacherId", isEqualTo: teacherId)
           .limit(1)
           .get();
 
       if (query.docs.isEmpty) {
-        _showError("No account found with Student ID $studentId");
+        _showError("No account found with Teacher ID $teacherId");
         setState(() => isLoading = false);
         return;
       }
@@ -49,20 +50,23 @@ class _ForgotPageState extends State<ForgotPage> {
       final data = query.docs.first.data();
       final firestoreEmail = data["email"];
 
-      //  Check if entered email matches Firestore email
+      // Check if email matches Firestore record
       if (firestoreEmail != email) {
-        _showError("Email does not match this Student ID");
+        _showError("Email does not match this Teacher ID");
         setState(() => isLoading = false);
         return;
       }
 
-      //  If matched, send reset email
+      // Send RESET EMAIL
       await auth.sendPasswordResetEmail(email: email);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Password reset email sent to $email")),
         );
+        // Wait a moment for the user to see the confirmation, then go back to login
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) context.go('/login');
       }
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? "Error sending reset email");
@@ -80,7 +84,15 @@ class _ForgotPageState extends State<ForgotPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Forgot Password")),
+      appBar: AppBar(
+        title: const Text("Forgot Password"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            context.go('/login');
+          },
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -90,27 +102,31 @@ class _ForgotPageState extends State<ForgotPage> {
               const SizedBox(height: 40),
               const Text(
                 "Forgot Password?",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 40),
+
+              // Teacher ID Input
               SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: TextField(
-                  controller: studentIdController,
+                  controller: teacherIdController,
                   decoration: InputDecoration(
-                    labelText: "Enter Student ID",
+                    labelText: "Enter Teacher ID",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 20),
+
+              // Email Input
               SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: TextField(
@@ -121,11 +137,16 @@ class _ForgotPageState extends State<ForgotPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 20),
+
+              // Reset Button
               isLoading
                   ? const CircularProgressIndicator()
                   : SizedBox(

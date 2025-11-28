@@ -99,9 +99,9 @@ class _LoginPageState extends State<LoginPage> {
           await prefs.setString("yearBlock", data["yearBlock"]);
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Welcome Teacher!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Welcome Teacher!")));
 
         // Start optional exam listener (if needed)
         if (data["programs"] != null && data["yearBlock"] != null) {
@@ -133,27 +133,29 @@ class _LoginPageState extends State<LoginPage> {
         .where('yearBlock', isEqualTo: yearBlock)
         .snapshots()
         .listen((snapshot) async {
-      final userRef = db.collection('users').doc(userId);
+          final userRef = db.collection('users').doc(userId);
 
-      for (var examDoc in snapshot.docs) {
-        final examId = examDoc.id;
-        final notifRef = userRef.collection('notifications').doc(examId);
+          for (var examDoc in snapshot.docs) {
+            final examId = examDoc.id;
+            final notifRef = userRef.collection('notifications').doc(examId);
 
-        final notifSnap = await notifRef.get();
-        if (!notifSnap.exists) {
-          await notifRef.set({
-            'viewed': false,
-            'subject': examDoc['subject'],
-            'createdAt': examDoc['createdAt'],
-          });
-          debugPrint("Created notif for $userId -> exam $examId");
-        }
-      }
-    });
+            final notifSnap = await notifRef.get();
+            if (!notifSnap.exists) {
+              await notifRef.set({
+                'viewed': false,
+                'subject': examDoc['subject'],
+                'createdAt': examDoc['createdAt'],
+              });
+              debugPrint("Created notif for $userId -> exam $examId");
+            }
+          }
+        });
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -174,10 +176,31 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset(
-                "assets/image/istockphoto_1401106927_612x612_removebg_preview.png",
-                width: 200,
-                height: 200,
+              // Logo/Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'assets/images/fots_teacher.png',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback to icon if image not found
+                    return Container(
+                      width: 200,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.blue[100],
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.school,
+                        size: 100,
+                        color: Colors.blue[800],
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 60),
 

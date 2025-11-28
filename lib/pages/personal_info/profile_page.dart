@@ -1,151 +1,158 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/exam_history_model.dart';
+import '../../widgets/exam_history_item.dart';
 
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+class ExamHistoryPage extends StatefulWidget {
+  const ExamHistoryPage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  State<ExamHistoryPage> createState() => _ExamHistoryPageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  String? userId;
+class _ExamHistoryPageState extends State<ExamHistoryPage> {
+  String? studentId;
 
   @override
   void initState() {
     super.initState();
-    _loadUserId();
+    _loadStudentId();
   }
 
-  Future<void> _loadUserId() async {
+  Future<void> _loadStudentId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      userId = prefs.getString("userId");
+      studentId = prefs.getString('studentId') ?? '';
+    });
+  }
+
+  Stream<List<ExamHistoryModel>> getExamHistoryStream() {
+    if (studentId == null || studentId!.isEmpty) {
+      // return empty stream if no studentId yet
+      return Stream.value([]);
+    }
+
+    final examResultsRef = FirebaseFirestore.instance.collection("examResults");
+
+    return examResultsRef.snapshots().asyncMap((snapshot) async {
+      final results = <ExamHistoryModel>[];
+      for (var doc in snapshot.docs) {
+        final resultSnap = await examResultsRef
+            .doc(doc.id)
+            .collection(studentId!)
+            .doc("result")
+            .get();
+        if (resultSnap.exists) {
+          results.add(ExamHistoryModel.fromDoc(resultSnap, doc.id));
+        }
+      }
+      results.sort((a, b) {
+        final aTime = a.submittedAt?.toDate() ?? DateTime(1970);
+        final bTime = b.submittedAt?.toDate() ?? DateTime(1970);
+        return bTime.compareTo(aTime);
+      });
+      return results;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (userId == null) {
+    if (studentId == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final userRef = FirebaseFirestore.instance.collection("users").doc(userId);
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: FutureBuilder<DocumentSnapshot>(
-        future: userRef.get(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text("Profile not found"));
-          }
-
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-
-          //  Fix Imgur link handling
-          String? imageUrl = data["profileImage"];
-          if (imageUrl != null &&
-              imageUrl.contains("imgur.com") &&
-              !imageUrl.contains("i.imgur.com")) {
-            imageUrl = "${imageUrl.replaceAll("imgur.com", "i.imgur.com")}.jpg";
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Blue Header
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.blue[800],
-                  child: const Text(
-                    "Profile",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+      backgroundColor: Colors.grey[100],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top block title
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade700,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'Exam History',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                // White Card with Profile Info
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundImage: (imageUrl != null && imageUrl.isNotEmpty)
-                              ? NetworkImage(imageUrl)
-                              : null,
-                          backgroundColor: Colors.grey[300],
-                          child: (imageUrl == null || imageUrl.isEmpty)
-                              ? const Icon(Icons.person, size: 50, color: Colors.white)
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        // Personal Details
-                        _buildSectionTitle("Personal Details"),
-                        _buildDetail("Name", data["name"]),
-                        _buildDetail("Student No.", data["studentId"]),
-                        _buildDetail("Gender", data["gender"]),
-                        _buildDetail("Date of Birth", data["dob"] ?? "N/A"),
-                        _buildDetail("Civil Status", data["civilStatus"]),
-                        _buildDetail("Nationality", data["nationality"]),
-                        const SizedBox(height: 8),
-                        // Enrolment Details
-                        _buildSectionTitle("Enrolment Details"),
-                        _buildDetail("Program", data["program"]),
-                        _buildDetail("Year/Block", data["yearBlock"] ?? "N/A"),
-                        _buildDetail("Semester", data["semester"]),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+
+            // Exam list
+            Expanded(
+              child: StreamBuilder<List<ExamHistoryModel>>(
+                stream: getExamHistoryStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text("Error: ${snapshot.error}"));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.history, size: 48, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text("No exam history found"),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final exams = snapshot.data!;
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: exams.length,
+                    itemBuilder: (context, index) {
+                      final exam = exams[index];
+                      return ExamHistoryItem(
+                        exam: exam,
+                        onTap: () {
+                          context.go(
+                            '/take-exam/${exam.id}',
+                            extra: {
+                              "examId": exam.id,
+                              "subject": exam.subject,
+                              "score": exam.score,
+                              "total": exam.total,
+                              'startMillis': null,
+                              'endMillis': null,
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _buildSectionTitle(String text) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.green[700],
-          ),
-        ),
-      );
-
-  Widget _buildDetail(String label, dynamic value) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              "$label: ${value ?? "N/A"}",
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-          ),
-          const Divider(height: 1, color: Colors.grey),
-        ],
-      );
 }

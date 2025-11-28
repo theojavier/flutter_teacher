@@ -31,8 +31,8 @@ class _TakeExamPageState extends State<TakeExamPage>
   int? end;
   bool isWarningShown = false;
 
-  bool _hasCamera = false;
-  bool _checkingCamera = true;
+  final bool _hasCamera = false;
+  final bool _checkingCamera = true;
   MediaStream? _cameraStream;
 
   @override

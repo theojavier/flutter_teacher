@@ -2,102 +2,70 @@ import 'package:flutter/material.dart';
 
 import 'pages/auth/login_page.dart';
 import 'pages/auth/forgot_page.dart';
-import 'pages/home/home_page.dart';
-import 'pages/personal_info/profile_page.dart';
-import 'pages/exams/exam_list_page.dart';
-import 'pages/exams/exam_page.dart';
-import 'pages/exams/take_exam_page.dart';
-import 'pages/exams/exam_result_page.dart';
-import 'pages/exams/exam_history_page.dart';
-import 'pages/home/schedule_page.dart';
-import 'widgets/responsive_scaffold.dart';
+import 'pages/teacher/teacher_dashboard.dart';
+import 'pages/teacher/exam_monitoring_page.dart';
+import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
 
 class AppRoutes {
   // Route names
   static const String login = '/login';
-  static const String home = '/home';
-  static const String profile = '/profile';
-  static const String examItem = '/exam-item';
-  static const String examHistory = '/exam-history';
-  static const String schedule = '/schedule';
   static const String forgot = '/forgot';
-  static const String resetPassword = '/reset-password';
-  static const String takeExam = '/take-exam';
-  static const String exam = '/exam';
-  static const String examResult = '/exam-result';
+  static const String teacherDashboard = '/teacher-dashboard';
+  static const String examMonitoring = '/exam-monitoring';
+  static const String teacherProfile = '/teacher-profile';
 
-  // Route map (for Navigator or MaterialApp)
+  // Route map
   static Map<String, WidgetBuilder> routes = {
     login: (context) => const LoginPage(),
     forgot: (context) => const ForgotPage(),
 
-    home: (context) => ResponsiveScaffold(
-          homePage: HomePage(),
-          examPage: ExamListPage(),
-          schedulePage: SchedulePage(),
-        ),
-
-    profile: (context) => ResponsiveScaffold(
-          homePage: ProfilePage(),
-          examPage: ExamListPage(),
-          schedulePage: SchedulePage(),
-        ),
-
-    examItem: (context) => ResponsiveScaffold(
-          homePage: ExamListPage(),
-          examPage: SizedBox.shrink(),
-          schedulePage: SizedBox.shrink(),
-        ),
-
-    
-
-    schedule: (context) => ResponsiveScaffold(
-          homePage: SchedulePage(),
-          examPage: SizedBox.shrink(),
-          schedulePage: SizedBox.shrink(),
-        ),
-
-    takeExam: (context) {
+    teacherDashboard: (context) {
       final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return ResponsiveScaffold(
-        homePage: HomePage(),
-        examPage: TakeExamPage(
-          examId: args['examId'],
-          startMillis: args['startMillis'],
-          endMillis: args['endMillis'],
-        ),
-        schedulePage: SchedulePage(),
-        initialIndex: 1,
-      );
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+      final teacherId = args?['teacherId'] as String? ?? '';
+      return TeacherDashboard(teacherId: teacherId);
     },
 
-    exam: (context) {
+    examMonitoring: (context) {
       final args =
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return ResponsiveScaffold(
-        homePage: HomePage(),
-        examPage: ExamPage(
-          examId: args['examId'],
-          studentId: args['studentId'],
-        ),
-        schedulePage:  SchedulePage(),
-        initialIndex: 1,
-      );
+      return ExamMonitoringPage(examId: args['examId']);
     },
 
-    examResult: (context) {
+    teacherProfile: (context) {
       final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return ResponsiveScaffold(
-        homePage: HomePage(),
-        examPage: ExamResultPage(
-          examId: args['examId'],
-          studentId: args['studentId'],
-        ),
-        schedulePage: SchedulePage(),
-        initialIndex: 1,
-      );
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+      final teacherId = args?['teacherId'] as String? ?? '';
+      return teacher_profile.EditProfilePage(
+        teacherId: teacherId,
+      ); // ✅ teacher profile route
     },
   };
 }
+
+extension NavigatorExtension on BuildContext {
+  Future<dynamic> pushNamed(
+    String name, {
+    Map<String, String>? pathParameters,
+    Object? arguments,
+  }) {
+    // Handle path parameters if any
+    String path = name;
+    if (pathParameters != null) {
+      pathParameters.forEach((key, value) {
+        path = path.replaceAll(':$key', value);
+      });
+    }
+    return Navigator.of(this).pushNamed(path, arguments: arguments);
+  }
+
+  void go(String name, {Object? arguments}) {
+    Navigator.of(this).pushNamed(name, arguments: arguments);
+  }
+}
+
+// Example of using the updated navigation with arguments
+// Navigator.of(context).pushNamed(
+//   AppRoutes.teacherProfile,
+//   arguments: {'teacherId': 'user123'},
+// );

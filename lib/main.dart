@@ -1,126 +1,102 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
 import 'firebase_options.dart';
-import 'widgets/responsive_scaffold.dart';
-import 'pages/home/home_page.dart';
-import 'pages/exams/exam_list_page.dart';
-import 'pages/home/schedule_page.dart';
+import 'pages/teacher/teacher_dashboard.dart';
+import 'pages/teacher/exam_monitoring_page.dart';
 import 'pages/auth/login_page.dart';
-import 'pages/exams/take_exam_page.dart';
-import 'pages/personal_info/profile_page.dart';
-import 'pages/exams/exam_history_page.dart';
-import 'pages/exams/exam_page.dart';
-import 'pages/exams/exam_result_page.dart';
 import 'pages/auth/forgot_page.dart';
+
+import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  //  Check if user is logged in with FirebaseAuth
-  final currentUser = FirebaseAuth.instance.currentUser;
-  final isLoggedIn = currentUser != null;
-
-  runApp(MyApp(isLoggedIn: isLoggedIn));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final bool isLoggedIn;
-  const MyApp({super.key, required this.isLoggedIn});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final GoRouter router = GoRouter(
-      initialLocation: isLoggedIn ? '/home' : '/login',
+      // Listen to auth changes to reactively redirect
+      refreshListenable: GoRouterRefreshStream(
+        FirebaseAuth.instance.authStateChanges(),
+      ),
+      initialLocation: '/login',
       routes: [
-
-        /// Public Routes
-        GoRoute(
-          path: '/login',
-          builder: (context, state) => const LoginPage(),
-        ),
+        // Public Routes
+        GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
         GoRoute(
           path: '/forgot',
           builder: (context, state) => const ForgotPage(),
         ),
-
-        ShellRoute(
-          builder: (context, state, child) {
-            return ResponsiveScaffold(
-              detailPage: child, 
-              homePage: HomePage(),
-              examPage: ExamListPage(),
-              schedulePage: SchedulePage(),
-            );
+        // Teacher Routes
+        GoRoute(
+          name: 'teacherDashboard',
+          path: '/teacher-dashboard',
+          builder: (context, state) {
+            final teacherId = FirebaseAuth.instance.currentUser?.uid ?? '';
+            return TeacherDashboard(teacherId: teacherId);
           },
-          routes: [
+        ),
 
+        GoRoute(
+          name: 'teacherProfile',
+          path: '/teacherProfile/:teacherId',
+          builder: (context, state) {
+            final teacherId = state.pathParameters['teacherId']!;
+            return teacher_profile.EditProfilePage(teacherId: teacherId);
+          },
+        ),
 
-            GoRoute(
-              path: '/home',
-              builder: (context, state) => HomePage(),
-            ),
-            GoRoute(
-              path: '/exam-list',
-              builder: (context, state) => ExamListPage(),
-            ),
-            GoRoute(
-              path: '/schedule',
-              builder: (context, state) => SchedulePage(),
-            ),
-            GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfilePage(),
-            ),
-
-
-            GoRoute(
-              name: 'take-exam',
-              path: '/take-exam/:examId',
-              builder: (context, state) {
-                final args = state.extra as Map<String, dynamic>?;
-                return TakeExamPage(
-                  examId: args?['examId'] ?? state.pathParameters['examId']!,
-                  startMillis: args?['startMillis'],
-                  endMillis: args?['endMillis'],
-                );
-              },
-            ),
-            GoRoute(
-              path: '/exam-history',
-              builder: (context, state) =>
-                  const ExamHistoryPage(),
-            ),
-            GoRoute(
-              name: 'exam',
-              path: '/exam/:examId/:studentId',
-              builder: (context, state) => ExamPage(
-                examId: state.pathParameters['examId']!,
-                studentId: state.pathParameters['studentId']!,
-              ),
-            ),
-            GoRoute(
-              name: 'examResult',
-              path: '/exam-result/:examId/:studentId',
-              builder: (context, state) => ExamResultPage(
-                examId: state.pathParameters['examId']!,
-                studentId: state.pathParameters['studentId']!,
-              ),
-            ),
-          ],
+        GoRoute(
+          name: 'examMonitoring',
+          path: '/exam-monitoring/:examId',
+          builder: (context, state) =>
+              ExamMonitoringPage(examId: state.pathParameters['examId']!),
         ),
       ],
+      redirect: (context, state) {
+        final loggedIn = FirebaseAuth.instance.currentUser != null;
+        final loggingIn =
+            state.uri.toString() == '/login' ||
+            state.uri.toString() == '/forgot';
+
+        if (!loggedIn && !loggingIn) return '/login';
+        if (loggedIn && loggingIn) return '/teacher-dashboard';
+        return null;
+      },
     );
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'A3rd',
+      title: 'FOTS: Teacher',
       theme: ThemeData(primarySwatch: Colors.blue),
       routerConfig: router,
     );
+  }
+}
+
+// Helper to allow GoRouter to listen to Firebase auth changes
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((event) {
+      notifyListeners();
+    });
+  }
+  late final StreamSubscription<dynamic> _subscription;
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }
