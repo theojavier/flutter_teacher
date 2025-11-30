@@ -5,7 +5,7 @@ class NavHeader extends StatefulWidget {
   final String section;
   final String? profileImageUrl;
   final VoidCallback onProfileTap;
-  final VoidCallback onHistoryTap;
+  // final VoidCallback onHistoryTap;
 
   const NavHeader({
     super.key,
@@ -13,7 +13,7 @@ class NavHeader extends StatefulWidget {
     required this.section,
     this.profileImageUrl,
     required this.onProfileTap,
-    required this.onHistoryTap,
+    // required this.onHistoryTap,
   });
 
   @override
@@ -38,13 +38,13 @@ class _NavHeaderState extends State<NavHeader> {
             child: UserAccountsDrawerHeader(
               margin: EdgeInsets.zero, // important: remove default gap
               decoration: const BoxDecoration(
-                color: Colors.blue, // same as AppBar for fused look
+                 color: Color(0xFF0F2B45),// same as AppBar for fused look
               ),
               accountName: Text(
                 widget.name,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFFE6F0F8),
                 ),
               ),
               accountEmail: Text(
@@ -52,7 +52,7 @@ class _NavHeaderState extends State<NavHeader> {
                 style: const TextStyle(color: Colors.white70),
               ),
               currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
+                backgroundColor: Color(0xFF0F2B45),
                 child: widget.profileImageUrl != null
                     ? ClipOval(
                         child: Image.network(
@@ -75,11 +75,14 @@ class _NavHeaderState extends State<NavHeader> {
         // Expandable options (hidden by default)
         AnimatedCrossFade(
           firstChild: const SizedBox.shrink(),
-          secondChild: Column(
+          secondChild: Container(
+            color: Color.fromARGB(255, 19, 54, 87),
+            child: Column(
             children: [
               ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text("My Profile"),
+                leading: const Icon(Icons.person,color: Colors.white),
+                title: const Text("My Profile",
+                style: TextStyle(color: Color(0xFFE6F0F8)), ),
                 onTap: () {
                   setState(() => _expanded = false);
                   if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
@@ -88,20 +91,22 @@ class _NavHeaderState extends State<NavHeader> {
                   widget.onProfileTap();
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.history),
-                title: const Text("History"),
-                onTap: () {
-                  setState(() => _expanded = false);
-                  if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
-                    Navigator.of(context).pop();
-                  }
-                  widget.onHistoryTap();
-                },
-              ),
+              // ListTile(
+              //   leading: const Icon(Icons.history,color: Colors.white),
+              //   title: const Text("History",
+              //   style: TextStyle(color: Color(0xFFE6F0F8)), ),
+              //   onTap: () {
+              //     setState(() => _expanded = false);
+              //     if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
+              //       Navigator.of(context).pop();
+              //     }
+              //     widget.onHistoryTap();
+              //   },
+              // ),
             ],
+            ),
           ),
-          duration: const Duration(milliseconds: 100),
+          duration: const Duration(milliseconds: 60),
           crossFadeState: _expanded
               ? CrossFadeState.showSecond
               : CrossFadeState.showFirst,

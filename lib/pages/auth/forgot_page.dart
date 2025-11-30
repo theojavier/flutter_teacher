@@ -85,14 +85,16 @@ class _ForgotPageState extends State<ForgotPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Forgot Password"),
+        title: const Text("Forgot Password", style:TextStyle(color:  Color(0xFFE6F0F8))),
+        backgroundColor: Color(0xFF0D1014),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFE6F0F8),),
           onPressed: () {
             context.go('/login');
           },
         ),
       ),
+      backgroundColor: Color(0xFF0D1014),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -102,19 +104,21 @@ class _ForgotPageState extends State<ForgotPage> {
               const SizedBox(height: 40),
               const Text(
                 "Forgot Password?",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold,color: Color(0xFFE6F0F8),),
               ),
               const SizedBox(height: 40),
 
               // Teacher ID Input
               SizedBox(
-                width: MediaQuery.of(context).size.width * 0.8,
+               width: 340,
                 child: TextField(
+                   style: TextStyle(color: Colors.white),
                   controller: teacherIdController,
                   decoration: InputDecoration(
                     labelText: "Enter Teacher ID",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
+                       borderSide: const BorderSide(color: Colors.white70),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 12,
@@ -128,13 +132,15 @@ class _ForgotPageState extends State<ForgotPage> {
 
               // Email Input
               SizedBox(
-                width: MediaQuery.of(context).size.width * 0.8,
+                width: 340,
                 child: TextField(
+                   style: TextStyle(color: Colors.white),
                   controller: emailController,
                   decoration: InputDecoration(
                     labelText: "Enter Email",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
+                       borderSide: const BorderSide(color: Colors.white70),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 12,
@@ -150,13 +156,20 @@ class _ForgotPageState extends State<ForgotPage> {
               isLoading
                   ? const CircularProgressIndicator()
                   : SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.8,
+                      width: 320,
                       child: ElevatedButton(
                         onPressed: _sendResetEmail,
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        child: const Text("Send Reset Link"),
+                        child: const Text(
+                          "Send Reset Link",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
             ],

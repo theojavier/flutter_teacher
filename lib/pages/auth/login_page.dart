@@ -17,10 +17,19 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
   final FirebaseFirestore db = FirebaseFirestore.instance;
   final FirebaseAuth auth = FirebaseAuth.instance;
+  bool get isFormFilled =>
+      idController.text.trim().isNotEmpty &&
+      passwordController.text.trim().isNotEmpty;
 
   bool isLoading = false;
   bool _isPasswordVisible = false;
   StreamSubscription? _examListener;
+  @override
+  void initState() {
+    super.initState();
+    idController.addListener(() => setState(() {}));
+    passwordController.addListener(() => setState(() {}));
+  }
 
   Future<void> _login() async {
     final id = idController.text.trim();
@@ -112,7 +121,10 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
 
-        if (mounted) context.go('/home');
+        if (mounted) {
+  await prefs.reload(); // ensure SharedPreferences is updated
+  context.go('/teacher-dashboard', extra: {'userId': doc.id});
+}
       } else {
         _showError("Access denied (not a Teacher account)");
       }
@@ -262,9 +274,12 @@ class _LoginPageState extends State<LoginPage> {
                   : SizedBox(
                       width: 340,
                       child: ElevatedButton(
-                        onPressed: _login,
+                        onPressed: isFormFilled ? _login : null,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: isFormFilled
+                              ? Colors.green
+                              : Colors.grey,
                         ),
                         child: const Text("Login"),
                       ),
