@@ -34,10 +34,13 @@ class _ForgotPageState extends State<ForgotPage> {
     setState(() => isLoading = true);
 
     try {
-      // Verify Teacher ID exists
+      // Verify Teacher ID exists in Firestore
       final query = await db
           .collection("users")
-          .where("teacherId", isEqualTo: teacherId)
+          .where(
+            "ID",
+            isEqualTo: teacherId,
+          ) // <-- Use correct Firestore field name
           .limit(1)
           .get();
 
@@ -50,8 +53,7 @@ class _ForgotPageState extends State<ForgotPage> {
       final data = query.docs.first.data();
       final firestoreEmail = data["email"];
 
-      // Check if email matches Firestore record
-      if (firestoreEmail != email) {
+      if (firestoreEmail == null || firestoreEmail != email) {
         _showError("Email does not match this Teacher ID");
         setState(() => isLoading = false);
         return;
@@ -64,7 +66,7 @@ class _ForgotPageState extends State<ForgotPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Password reset email sent to $email")),
         );
-        // Wait a moment for the user to see the confirmation, then go back to login
+        // Wait a moment, then go back to login
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) context.go('/login');
       }
@@ -85,16 +87,19 @@ class _ForgotPageState extends State<ForgotPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Forgot Password", style:TextStyle(color:  Color(0xFFE6F0F8))),
-        backgroundColor: Color(0xFF0D1014),
+        title: const Text(
+          "Forgot Password",
+          style: TextStyle(color: Color.fromARGB(255, 19, 82, 132)),
+        ),
+        backgroundColor: Color.fromARGB(255, 250, 250, 250),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFFE6F0F8),),
+          icon: const Icon(Icons.arrow_back, color: Color.fromARGB(255, 8, 12, 17)),
           onPressed: () {
             context.go('/login');
           },
         ),
       ),
-      backgroundColor: Color(0xFF0D1014),
+      backgroundColor: Color.fromARGB(255, 241, 242, 243),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -104,21 +109,25 @@ class _ForgotPageState extends State<ForgotPage> {
               const SizedBox(height: 40),
               const Text(
                 "Forgot Password?",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold,color: Color(0xFFE6F0F8),),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromARGB(255, 19, 82, 132),
+                ),
               ),
               const SizedBox(height: 40),
 
               // Teacher ID Input
               SizedBox(
-               width: 340,
+                width: 340,
                 child: TextField(
-                   style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                   controller: teacherIdController,
                   decoration: InputDecoration(
                     labelText: "Enter Teacher ID",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                       borderSide: const BorderSide(color: Colors.white70),
+                      borderSide: const BorderSide(color: Colors.white70),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 12,
@@ -134,13 +143,13 @@ class _ForgotPageState extends State<ForgotPage> {
               SizedBox(
                 width: 340,
                 child: TextField(
-                   style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                   controller: emailController,
                   decoration: InputDecoration(
                     labelText: "Enter Email",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                       borderSide: const BorderSide(color: Colors.white70),
+                      borderSide: const BorderSide(color: Colors.white70),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 12,

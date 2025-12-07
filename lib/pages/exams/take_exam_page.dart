@@ -324,15 +324,29 @@ void _detectFace() {
 
                             //  Completed
                             if (doc.exists && doc["status"] == "completed") {
-                              return ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.viewResult,
-                                ),
-                                child: const Text("View Result"),
-                                onPressed: () {
-                                  // View Result
-                                  context.go('/exam-result/${widget.examId}/$studentId');
-                                },
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.viewResult,
+                                    ),
+                                    onPressed: () {
+                                      // View Result
+                                      context.go('/exam-result/${widget.examId}/$studentId');
+                                    },
+                                    child: const Text("View Result"),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade600,
+                                    ),
+                                    onPressed: () => _retakeExam(context),
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text("Re-take Exam"),
+                                  ),
+                                ],
                               );
                             }
 
@@ -447,4 +461,67 @@ void _detectFace() {
       ),
     );
   }
+
+  Future<void> _retakeExam(BuildContext context) async {
+    try {
+      // Show confirmation dialog
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Re-take Exam?'),
+          content: const Text(
+            'Are you sure you want to re-take this exam? Your previous result will be kept, and a new attempt will be recorded.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+              ),
+              child: const Text('Re-take'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      // Create a new attempt record
+      await db
+          .collection('examResults')
+          .doc(widget.examId)
+          .collection(studentId!)
+          .doc('result')
+          .update({
+            'status': 'in-progress',
+            'retakeAttemptedAt': DateTime.now(),
+            'previousAttempts': FieldValue.increment(1),
+          });
+
+      // Navigate to exam
+      if (context.mounted) {
+        context.goNamed(
+          'exam',
+          pathParameters: {
+            'examId': widget.examId,
+            'studentId': studentId!,
+          },
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error starting retake: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }
+

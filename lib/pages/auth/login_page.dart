@@ -17,13 +17,14 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
   final FirebaseFirestore db = FirebaseFirestore.instance;
   final FirebaseAuth auth = FirebaseAuth.instance;
+
+  bool isLoading = false;
+  bool isPasswordVisible = false;
+
   bool get isFormFilled =>
       idController.text.trim().isNotEmpty &&
       passwordController.text.trim().isNotEmpty;
 
-  bool isLoading = false;
-  bool _isPasswordVisible = false;
-  StreamSubscription? _examListener;
   @override
   void initState() {
     super.initState();
@@ -41,7 +42,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      // Fetch teacher profile by ID
       final query = await db
           .collection("users")
           .where("ID", isEqualTo: id)
@@ -62,71 +62,61 @@ class _LoginPageState extends State<LoginPage> {
       final role = data["role"];
 
       if (email == null || uid == null) {
-        _showError("Account setup error. Please contact admin.");
+        _showError("Account setup error. Contact admin.");
         setState(() => isLoading = false);
         return;
       }
 
-      // Authenticate with Firebase
       final userCredential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      if (userCredential.user == null || userCredential.user!.uid != uid) {
-        _showError("Account mismatch. Please contact admin.");
+      if (userCredential.user == null ||
+          userCredential.user!.uid != uid) {
+        _showError("Account mismatch. Contact admin.");
         await auth.signOut();
         setState(() => isLoading = false);
         return;
       }
 
-      // Proceed only if teacher role
-      if (role.toString().toLowerCase() == "teacher") {
-        await db.collection("users").doc(doc.id).update({
-          "lastLogin": FieldValue.serverTimestamp(),
-        });
+      if (role.toString().toLowerCase() != "teacher") {
+        _showError("Access denied (not a teacher)");
+        setState(() => isLoading = false);
+        return;
+      }
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("userId", doc.id);
-        await prefs.setString("teacherId", data["ID"]);
-        await prefs.setString("name", data["name"] ?? "");
-        await prefs.setString("email", email);
-        await prefs.setString("major", data["major"] ?? "");
-        await prefs.setString("gender", data["gender"] ?? "");
-        await prefs.setString("civilStatus", data["civilStatus"] ?? "");
-        await prefs.setString("nationality", data["nationality"] ?? "");
-        await prefs.setString("profileImage", data["profileImage"] ?? "");
+      await db.collection("users").doc(doc.id).update({
+        "lastLogin": FieldValue.serverTimestamp(),
+      });
 
-        if (data.containsKey("programs")) {
-          await prefs.setStringList(
-            "programs",
-            List<String>.from(data["programs"]),
-          );
-        }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("userId", doc.id);
+      await prefs.setString("teacherId", data["ID"]);
+      await prefs.setString("name", data["name"] ?? "");
+      await prefs.setString("email", email);
+      await prefs.setString("major", data["major"] ?? "");
+      await prefs.setString("gender", data["gender"] ?? "");
+      await prefs.setString("civilStatus", data["civilStatus"] ?? "");
+      await prefs.setString("nationality", data["nationality"] ?? "");
+      await prefs.setString("profileImage", data["profileImage"] ?? "");
 
-        if (data.containsKey("yearBlock")) {
-          await prefs.setString("yearBlock", data["yearBlock"]);
-        }
+      if (data.containsKey("programs")) {
+        await prefs.setStringList(
+            "programs", List<String>.from(data["programs"]));
+      }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Welcome Teacher!")));
+      if (data.containsKey("yearBlock")) {
+        await prefs.setString("yearBlock", data["yearBlock"]);
+      }
 
-        // Start optional exam listener (if needed)
-        if (data["programs"] != null && data["yearBlock"] != null) {
-          startExamListener(
-            doc.id,
-            data["programs"][0], // first program
-            data["yearBlock"],
-          );
-        }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Welcome Teacher!")),
+      );
 
-        if (mounted) {
-  await prefs.reload(); // ensure SharedPreferences is updated
-  context.go('/teacher-dashboard', extra: {'userId': doc.id});
-}
-      } else {
-        _showError("Access denied (not a Teacher account)");
+      if (mounted) {
+        context.go('/teacher-dashboard',
+            extra: {"userId": doc.id});
       }
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? "Invalid ID or Password");
@@ -137,45 +127,9 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = false);
   }
 
-  // Real-time exam notifications (optional)
-  void startExamListener(String userId, String program, String yearBlock) {
-    _examListener = db
-        .collection('exams')
-        .where('program', isEqualTo: program)
-        .where('yearBlock', isEqualTo: yearBlock)
-        .snapshots()
-        .listen((snapshot) async {
-          final userRef = db.collection('users').doc(userId);
-
-          for (var examDoc in snapshot.docs) {
-            final examId = examDoc.id;
-            final notifRef = userRef.collection('notifications').doc(examId);
-
-            final notifSnap = await notifRef.get();
-            if (!notifSnap.exists) {
-              await notifRef.set({
-                'viewed': false,
-                'subject': examDoc['subject'],
-                'createdAt': examDoc['createdAt'],
-              });
-              debugPrint("Created notif for $userId -> exam $examId");
-            }
-          }
-        });
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  @override
-  void dispose() {
-    _examListener?.cancel();
-    idController.dispose();
-    passwordController.dispose();
-    super.dispose();
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -186,37 +140,21 @@ class _LoginPageState extends State<LoginPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Logo/Image
+              // Logo
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Image.asset(
                   'assets/images/fots_teacher.png',
-                  width: 200,
-                  height: 200,
+                  width: 350,
+                  height: 350,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    // Fallback to icon if image not found
-                    return Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.blue[100],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        Icons.school,
-                        size: 100,
-                        color: Colors.blue[800],
-                      ),
-                    );
-                  },
                 ),
               ),
-              const SizedBox(height: 60),
 
-              // Teacher ID Field
+              const SizedBox(height: 40),
+
+              // ID field
               SizedBox(
                 width: 320,
                 child: TextField(
@@ -224,41 +162,30 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     hintText: "Teacher ID",
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ),
-              const SizedBox(height: 25),
 
-              // Password Field
+              const SizedBox(height: 20),
+
+              // Password field
               SizedBox(
                 width: 320,
                 child: TextField(
                   controller: passwordController,
-                  obscureText: !_isPasswordVisible,
+                  obscureText: !isPasswordVisible,
                   decoration: InputDecoration(
                     hintText: "Password",
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
+                        borderRadius: BorderRadius.circular(8)),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
+                      icon: Icon(isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off),
                       onPressed: () {
                         setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
+                          isPasswordVisible = !isPasswordVisible;
                         });
                       },
                     ),
@@ -268,7 +195,7 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 40),
 
-              // Login Button
+              // Login
               isLoading
                   ? const CircularProgressIndicator()
                   : SizedBox(
@@ -276,10 +203,10 @@ class _LoginPageState extends State<LoginPage> {
                       child: ElevatedButton(
                         onPressed: isFormFilled ? _login : null,
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: isFormFilled
-                              ? Colors.green
-                              : Colors.grey,
+                          backgroundColor:
+                              isFormFilled ? Colors.green : Colors.grey,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14),
                         ),
                         child: const Text("Login"),
                       ),
@@ -287,17 +214,13 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 20),
 
-              // Forgot Password
               TextButton(
-                onPressed: () {
-                  context.go('/forgot');
-                },
+                onPressed: () => context.go('/forgot'),
                 child: const Text(
                   "Forgot Password?",
                   style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ],

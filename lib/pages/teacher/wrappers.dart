@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../teacher/teacher_dashboard.dart';
-import '../teacher/exam_monitoring_page.dart';
-import '../teacher/teacher_profile_page.dart';
+import '../teacher/teacher_dashboard_page.dart';
 
 class TeacherDashboardPageWrapper extends StatelessWidget {
   const TeacherDashboardPageWrapper({super.key});
@@ -10,7 +8,7 @@ class TeacherDashboardPageWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final teacherId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    return TeacherDashboard(teacherId: teacherId);
+    return TeacherDashboardPage(teacherId: teacherId);
   }
 }
 

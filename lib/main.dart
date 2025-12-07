@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-
 import 'firebase_options.dart';
+import 'services/fcm_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore
 import 'pages/teacher/edit_exam_page.dart';
 import 'pages/teacher/edit_question_page.dart';
 import 'pages/auth/login_page.dart';
@@ -12,15 +13,18 @@ import 'pages/auth/forgot_page.dart';
 import 'pages/teacher/exam_monitoring_page.dart';
 import 'pages/teacher/teacher_monitoring_page.dart';
 import 'pages/teacher/teacher_exams_page.dart';
-
+import 'pages/teacher/student_management_page.dart';
 import 'pages/teacher/teacher_dashboard_page.dart';
-import 'pages/teacher/wrappers.dart';
 import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
+
 import 'widgets/responsive_scaffold.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await initializeFCM();
+
   runApp(const MyApp());
 }
 
@@ -38,8 +42,8 @@ class MyApp extends StatelessWidget {
 
       redirect: (context, state) {
         final loggedIn = FirebaseAuth.instance.currentUser != null;
-
         final path = state.uri.path;
+
         final loggingIn = path == '/login' || path == '/forgot';
 
         if (!loggedIn && !loggingIn) return '/login';
@@ -49,88 +53,181 @@ class MyApp extends StatelessWidget {
       },
 
       routes: [
-        /// PUBLIC ROUTES
-        GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+        // -----------------------------
+        // PUBLIC ROUTES
+        // -----------------------------
+        GoRoute(
+          path: '/login',
+          pageBuilder: (context, state) =>
+              NoTransitionPage(child: const LoginPage()),
+        ),
         GoRoute(
           path: '/forgot',
-          builder: (context, state) => const ForgotPage(),
+          pageBuilder: (context, state) =>
+              NoTransitionPage(child: const ForgotPage()),
         ),
 
-        /// SHELL ROUTE FOR TEACHER NAVIGATION LAYOUT
+        // -----------------------------
+        // TEACHER PROTECTED LAYOUT
+        // -----------------------------
         ShellRoute(
           builder: (context, state, child) {
-            final location = state.uri.path;
+            final teacherId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
+            final location = state.uri.path;
             int index = 0;
-            if (location.startsWith('/teacher-dashboard'))
-              index = 0; // Dashboard
-            if (location.startsWith('/teacher-exams')) index = 1; // Exams
-            if (location.startsWith('/teacher-monitoring'))
-              index = 2; // Monitoring
+
+            if (location.startsWith('/teacher-dashboard')) index = 0;
+            if (location.startsWith('/teacher-exams')) index = 1;
+            if (location.startsWith('/teacher-monitoring')) index = 2;
 
             return ResponsiveScaffold(
               initialIndex: index,
-              homePage: TeacherDashboardPage(
-                teacherId: FirebaseAuth.instance.currentUser!.uid,
-              ),
-              examPage: TeacherExamsPage(
-                teacherId: FirebaseAuth.instance.currentUser!.uid,
-              ),
-              schedulePage: TeacherMonitoringPage(
-                teacherId: FirebaseAuth.instance.currentUser!.uid,
-              ),
-              child: child, // FIXED
+              homePage: TeacherDashboardPage(teacherId: teacherId),
+              examPage: const TeacherExamsPage(),
+              schedulePage: TeacherMonitoringPage(teacherId: teacherId),
+              child: child,
             );
           },
-
           routes: [
+            //-----------------------------------
+            // DASHBOARD
+            //-----------------------------------
             GoRoute(
               path: '/teacher-dashboard',
-              builder: (context, state) => TeacherDashboardPage(
-                teacherId: FirebaseAuth.instance.currentUser!.uid,
-              ),
+              pageBuilder: (context, state) {
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                if (uid == null) {
+                  return NoTransitionPage(
+                    child: const Scaffold(
+                      body: Center(child: Text('No user logged in')),
+                    ),
+                  );
+                }
+
+                return NoTransitionPage(
+                  child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(uid)
+                        .get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Scaffold(
+                          body: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return const Scaffold(
+                          body: Center(child: Text('User not found')),
+                        );
+                      }
+
+                      final data = snapshot.data!.data()!;
+                      final teacherId = data['ID'] ?? '';
+
+                      return TeacherDashboardPage(teacherId: teacherId);
+                    },
+                  ),
+                );
+              },
             ),
 
+            //-----------------------------------
+            // TEACHER EXAMS
+            //-----------------------------------
             GoRoute(
               path: '/teacher-exams',
-              builder: (context, state) => TeacherExamsPage(
-                teacherId: FirebaseAuth.instance.currentUser!.uid,
-              ),
+              pageBuilder: (context, state) =>
+                  NoTransitionPage(child: const TeacherExamsPage()),
             ),
 
+            //-----------------------------------
+            // MONITORING
+            //-----------------------------------
             GoRoute(
               path: '/teacher-monitoring',
-              builder: (context, state) => TeacherMonitoringPage(
-                teacherId: FirebaseAuth.instance.currentUser!.uid,
-              ),
+              pageBuilder: (context, state) {
+                final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+
+                return NoTransitionPage(
+                  child: FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(uid)
+                        .get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Scaffold(
+                          body: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return const Scaffold(
+                          body: Center(child: Text("Teacher data not found.")),
+                        );
+                      }
+
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>;
+                      final teacherId = data['ID'] ?? "";
+
+                      return TeacherMonitoringPage(teacherId: teacherId);
+                    },
+                  ),
+                );
+              },
             ),
 
+            //-----------------------------------
+            // STUDENT MANAGEMENT
+            //-----------------------------------
+            GoRoute(
+              path: '/student-management',
+              pageBuilder: (context, state) {
+                final teacherId = FirebaseAuth.instance.currentUser?.uid ?? "";
+                return NoTransitionPage(
+                  child: StudentManagementPage(teacherId: teacherId),
+                );
+              },
+            ),
+
+            //-----------------------------------
+            // SPECIFIC EXAM MONITORING
+            //-----------------------------------
             GoRoute(
               name: 'examMonitoring',
               path: '/exam-monitoring/:examId',
-              builder: (context, state) {
-                return ExamMonitoringPage(
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: ExamMonitoringPage(
                   examId: state.pathParameters['examId']!,
-                );
-              },
+                ),
+              ),
             ),
 
+            //-----------------------------------
+            // TEACHER PROFILE
+            //-----------------------------------
             GoRoute(
               name: 'teacherProfile',
               path: '/teacherProfile/:teacherId',
-              builder: (context, state) {
-                return teacher_profile.EditProfilePage(
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: teacher_profile.EditProfilePage(
                   teacherId: state.pathParameters['teacherId']!,
-                );
-              },
+                ),
+              ),
             ),
-            // EDIT EXAM (with parameter)
+
+            //-----------------------------------
+            // EDIT EXAM
+            //-----------------------------------
             GoRoute(
               path: '/edit-exam/:examId',
               pageBuilder: (context, state) {
                 final examId = state.pathParameters['examId'];
                 final extra = state.extra as Map<String, dynamic>? ?? {};
-
                 return NoTransitionPage(
                   child: EditExamPage(
                     docId: examId,
@@ -140,24 +237,10 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            // EDIT QUESTION (with parameter)
-            GoRoute(
-              path: '/edit-question/:examDocId',
-              pageBuilder: (context, state) {
-                final examDocId = state.pathParameters['examDocId'];
-
-                return NoTransitionPage(
-                  child: EditQuestionPage(examDocId: examDocId),
-                );
-              },
-            ),
-
-            // EDIT EXAM (NO PARAM, using extras only)
             GoRoute(
               path: '/edit-exam',
               pageBuilder: (context, state) {
                 final extra = state.extra as Map<String, dynamic>? ?? {};
-
                 return NoTransitionPage(
                   child: EditExamPage(
                     docId: extra['docId'],
@@ -167,12 +250,22 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            // EDIT QUESTION (NO PARAM, using extras only)
+            //-----------------------------------
+            // EDIT QUESTION
+            //-----------------------------------
+            GoRoute(
+              path: '/edit-question/:examDocId',
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: EditQuestionPage(
+                  examDocId: state.pathParameters['examDocId'],
+                ),
+              ),
+            ),
+
             GoRoute(
               path: '/edit-question',
               pageBuilder: (context, state) {
                 final extra = state.extra as Map<String, dynamic>? ?? {};
-
                 return NoTransitionPage(
                   child: EditQuestionPage(examDocId: extra['examDocId']),
                 );
@@ -192,7 +285,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// LISTENER FOR AUTH EVENTS
+// ------------------------------------------------
+// AUTH LISTENER (no changes needed)
+// ------------------------------------------------
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();

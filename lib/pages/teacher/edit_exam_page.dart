@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../services/firestore_service.dart';
 
 class EditExamPage extends StatefulWidget {
   final String? docId;
@@ -16,16 +19,19 @@ class EditExamPage extends StatefulWidget {
 class _EditExamPageState extends State<EditExamPage> {
   final _formKey = GlobalKey<FormState>();
   final _db = FirebaseFirestore.instance;
+  final _examService = ExamService();
+  bool _isSaving = false;
 
   final _programController = TextEditingController();
   final _subjectController = TextEditingController();
   final _yearBlockController = TextEditingController();
   final _creatorController = TextEditingController();
   final _statusController = TextEditingController();
-  final _teacherIdController = TextEditingController();
 
   DateTime? _startTime;
   DateTime? _endTime;
+
+  String? _teacherId;
 
   @override
   void initState() {
@@ -35,9 +41,25 @@ class _EditExamPageState extends State<EditExamPage> {
       _loadExam(widget.docId!);
     } else if (widget.existing != null) {
       _setControllers(widget.existing!);
+    } else {
+      _loadTeacherId();
     }
   }
 
+  // Load the teacher ID from Firebase if not passed
+  void _loadTeacherId() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      final doc = await _db.collection('users').doc(currentUser.uid).get();
+      if (doc.exists) {
+        setState(() {
+          _teacherId = doc.data()?['ID'];
+        });
+      }
+    }
+  }
+
+  // Load exam data if editing an existing exam
   void _loadExam(String id) async {
     final doc = await FirebaseFirestore.instance
         .collection('exams')
@@ -55,7 +77,7 @@ class _EditExamPageState extends State<EditExamPage> {
       _yearBlockController.text = data['yearBlock'] ?? '';
       _creatorController.text = data['creator'] ?? '';
       _statusController.text = data['status'] ?? '';
-      _teacherIdController.text = data['teacherId'] ?? '';
+      _teacherId = data['teacherId']; // Set teacherId from existing data
       _startTime = (data['startTime'] as Timestamp?)?.toDate();
       _endTime = (data['endTime'] as Timestamp?)?.toDate();
     });
@@ -66,7 +88,6 @@ class _EditExamPageState extends State<EditExamPage> {
     _programController.dispose();
     _subjectController.dispose();
     _yearBlockController.dispose();
-    _teacherIdController.dispose();
     _creatorController.dispose();
     _statusController.dispose();
     super.dispose();
@@ -116,36 +137,80 @@ class _EditExamPageState extends State<EditExamPage> {
       return;
     }
 
+    if (_teacherId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Teacher ID is required')));
+      return;
+    }
+
     final data = {
       'program': _programController.text.trim(),
       'subject': _subjectController.text.trim(),
       'yearBlock': _yearBlockController.text.trim(),
       'creator': _creatorController.text.trim(),
       'status': _statusController.text.trim(),
-      'teacherId': _teacherIdController.text.trim(),
+      'teacherId': _teacherId,
       'startTime': Timestamp.fromDate(_startTime!),
       'endTime': Timestamp.fromDate(_endTime!),
-      'updatedAt': FieldValue.serverTimestamp(),
     };
 
+    setState(() {
+      _isSaving = true;
+    });
+
     try {
+      String examId;
+
       if (widget.docId == null) {
-        await _db.collection('exams').add({
+        // Save new exam
+        final docRef = await _db.collection('exams').add({
           ...data,
           'createdAt': FieldValue.serverTimestamp(),
         });
-      } else {
-        await _db.collection('exams').doc(widget.docId).update(data);
-      }
+        examId = docRef.id;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Exam saved successfully!')));
-      Navigator.pop(context);
+        // Also create a document in examResults
+        await _db.collection("examResults").doc(examId).set({
+          "teacherId": _teacherId,
+          "examId": examId,
+        }, SetOptions(merge: true));
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Exam saved successfully!')),
+          );
+          Navigator.pop(context); // Navigate back on mobile
+        }
+      } else {
+        // Update existing exam
+        examId = widget.docId!;
+        await _db.collection('exams').doc(examId).update(data);
+
+        // Update examResults as well
+        await _db.collection("examResults").doc(examId).set({
+          "teacherId": _teacherId,
+          "examId": examId,
+        }, SetOptions(merge: true));
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Exam updated successfully!')),
+          );
+        }
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -182,7 +247,7 @@ class _EditExamPageState extends State<EditExamPage> {
                   _field(_subjectController, 'Subject'),
                   _field(_yearBlockController, 'Year/Block'),
                   _field(_creatorController, 'Creator (Teacher)'),
-                  _field(_teacherIdController, 'Teacher ID'),
+                  // Teacher ID is set automatically, no need to input manually
                   _field(_statusController, 'Status (optional)'),
 
                   const SizedBox(height: 20),
@@ -225,8 +290,16 @@ class _EditExamPageState extends State<EditExamPage> {
                           backgroundColor: Color.fromARGB(255, 0, 255, 13),
                           foregroundColor: Colors.white,
                         ),
-                        onPressed: _saveExam,
-                        child: const Text('Save'),
+                        onPressed: _isSaving ? null : _saveExam,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Save'),
                       ),
                     ],
                   ),
@@ -243,10 +316,7 @@ class _EditExamPageState extends State<EditExamPage> {
                       label: const Text('Edit Exam Questions'),
                       onPressed: () {
                         if (widget.docId != null) {
-                          context.go(
-                            '/edit-question/${widget.docId}',
-                            // extra: {'existing': widget.existing}, // optional
-                          );
+                          context.go('/edit-question/${widget.docId}');
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
