@@ -316,7 +316,7 @@ class _EditExamPageState extends State<EditExamPage> {
                       label: const Text('Edit Exam Questions'),
                       onPressed: () {
                         if (widget.docId != null) {
-                          context.go('/edit-question/${widget.docId}');
+                          context.push('/edit-question/${widget.docId}');
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

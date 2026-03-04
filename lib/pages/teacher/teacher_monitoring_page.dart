@@ -191,11 +191,15 @@ class TeacherMonitoringPage extends StatelessWidget {
     String studentId,
   ) async {
     await db
-        .collection('examResults')
-        .doc(examId)
-        .collection('students')
-        .doc(studentId)
-        .update({'currentIndex': 'stopped'});
+    .collection('examResults')
+    .doc(examId)
+    .collection('students')
+    .doc(studentId)
+    .update({
+      'currentIndex': 'stopped',
+      'status': 'incomplete',
+    });
+
   }
 
   // Allow a student to retake the exam

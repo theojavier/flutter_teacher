@@ -73,6 +73,14 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                 ElevatedButton(
                   onPressed: () {
                     // Pass teacherId to the EditExamPage
+                    // context.push(
+                    //   '/edit-exam',
+                    //   extra: {
+                    //     'teacherId': teacherId,
+                    //     'docId': null,
+                    //     'existing': null,
+                    //   },
+                    // );
                     context.push(
                       '/edit-exam',
                       extra: {
@@ -140,6 +148,10 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                                       color: Colors.white,
                                     ),
                                     onPressed: () {
+                                      // context.push(
+                                      //   '/edit-exam/${e.id}',
+                                      //   extra: {'existing': data},
+                                      // );
                                       context.push(
                                         '/edit-exam/${e.id}',
                                         extra: {'existing': data},

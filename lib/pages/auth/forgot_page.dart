@@ -68,7 +68,7 @@ class _ForgotPageState extends State<ForgotPage> {
         );
         // Wait a moment, then go back to login
         await Future.delayed(const Duration(seconds: 1));
-        if (mounted) context.go('/login');
+        if (mounted) context.push('/login');
       }
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? "Error sending reset email");
@@ -86,20 +86,20 @@ class _ForgotPageState extends State<ForgotPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F2B45),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0A1F36),
         title: const Text(
           "Forgot Password",
-          style: TextStyle(color: Color.fromARGB(255, 19, 82, 132)),
+          style: TextStyle(color: Color(0xFFE6F0F8)),
         ),
-        backgroundColor: Color.fromARGB(255, 250, 250, 250),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromARGB(255, 8, 12, 17)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFE6F0F8)),
           onPressed: () {
-            context.go('/login');
+            context.push('/login');
           },
         ),
       ),
-      backgroundColor: Color.fromARGB(255, 241, 242, 243),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -112,7 +112,7 @@ class _ForgotPageState extends State<ForgotPage> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Color.fromARGB(255, 19, 82, 132),
+                  color: Color(0xFFE6F0F8),
                 ),
               ),
               const SizedBox(height: 40),
@@ -125,6 +125,7 @@ class _ForgotPageState extends State<ForgotPage> {
                   controller: teacherIdController,
                   decoration: InputDecoration(
                     labelText: "Enter Teacher ID",
+                    labelStyle: const TextStyle(color: Colors.white),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Colors.white70),
@@ -147,6 +148,7 @@ class _ForgotPageState extends State<ForgotPage> {
                   controller: emailController,
                   decoration: InputDecoration(
                     labelText: "Enter Email",
+                    labelStyle: const TextStyle(color: Colors.white),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Colors.white70),

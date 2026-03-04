@@ -148,13 +148,13 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
     switch (index) {
       case 0:
-        context.go('/teacher-dashboard');
+        context.push('/teacher-dashboard');
         break;
       case 1:
-        context.go('/teacher-exams');
+        context.push('/teacher-exams');
         break;
       case 2:
-        context.go('/teacher-monitoring');
+        context.push('/teacher-monitoring');
         break;
     }
 
@@ -195,7 +195,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               centerTitle: true,
               automaticallyImplyLeading: false,
               title: GestureDetector(
-                onTap: () => context.go('/teacher-dashboard'),
+                onTap: () => context.push('/teacher-dashboard'),
                 child: Image.asset(
                   'assets/images/fots_teacher.png',
                   height: 80,
@@ -209,7 +209,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               centerTitle: true,
               automaticallyImplyLeading: false,
               title: GestureDetector(
-                onTap: () => context.go('/teacher-dashboard'),
+                onTap: () => context.push('/teacher-dashboard'),
                 child: Image.asset(
                   'assets/images/fots_teacher.png',
                   height: 80,
@@ -254,7 +254,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                     profileImageUrl: profileImageUrl,
                     onProfileTap: () {
                       _refreshProfile();
-                      context.go('/teacherProfile/$_userId');
+                      context.push('/teacherProfile/$_userId');
                     },
                     // onHistoryTap: () async {
                     //   final prefs = await SharedPreferences.getInstance();
@@ -383,11 +383,11 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             profileImageUrl: profileImageUrl,
             onProfileTap: () {
               if (_userId != null) {
-                context.go('/teacherProfile/$_userId');
+                context.push('/teacherProfile/$_userId');
               }
             },
             // onHistoryTap: () async {
-            //   context.go('/exam-history');
+            //   context.push('/exam-history');
             // },
           ),
           ..._menuTiles(),

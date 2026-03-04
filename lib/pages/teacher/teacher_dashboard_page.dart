@@ -143,8 +143,8 @@ class TeacherDashboardPage extends StatelessWidget {
           totalStudents += studentSnap.size;
 
           final flaggedCount = studentSnap.docs
-              .where((doc) => (doc.data() as Map<String, dynamic>)['cheatingCount'] != null &&
-                  (doc.data() as Map<String, dynamic>)['cheatingCount'] > 0)
+              .where((doc) => (doc.data())['cheatingCount'] != null &&
+                  (doc.data())['cheatingCount'] > 0)
               .length;
           totalFlagged += flaggedCount;
         }

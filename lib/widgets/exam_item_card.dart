@@ -15,7 +15,7 @@ class ExamItemCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          context.go(
+          context.push(
             '/take-exam/${exam.id}',
             extra: {
               'examId': exam.id,

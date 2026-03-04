@@ -16,7 +16,10 @@ class ExamMonitoringPage extends StatelessWidget {
         backgroundColor: const Color(0xFF0A1F36),
         title: const Text(
           "Monitor Exams",
-          style: TextStyle(color: Color(0xFFE6F0F8), fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFFE6F0F8),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -27,14 +30,18 @@ class ExamMonitoringPage extends StatelessWidget {
               .collection("exams")
               .doc(examId)
               .collection("students")
-              .where("status", isEqualTo: "incompleted") // Students who need to retake
+              .where(
+                "status",
+                isEqualTo: "incompleted",
+              ) // Students who need to retake
               .snapshots(),
           builder: (context, studentSnapshot) {
             if (studentSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (!studentSnapshot.hasData || studentSnapshot.data!.docs.isEmpty) {
+            if (!studentSnapshot.hasData ||
+                studentSnapshot.data!.docs.isEmpty) {
               return const Padding(
                 padding: EdgeInsets.all(8.0),
                 child: Text("No students to monitor."),
@@ -63,8 +70,7 @@ class ExamMonitoringPage extends StatelessWidget {
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
                       // Update status of student to allow retake or stop the exam
-                      _updateStudentStatus(
-                        db, examId, student.id, value);
+                      _updateStudentStatus(db, examId, student.id, value);
                     },
                     itemBuilder: (context) {
                       return [
@@ -85,9 +91,7 @@ class ExamMonitoringPage extends StatelessWidget {
                     if (status == "allowed_to_retake") {
                       context.goNamed(
                         "examRetake",
-                        pathParameters: {
-                          "examId": examId,
-                        },
+                        pathParameters: {"examId": examId},
                       );
                     }
                   },
@@ -102,9 +106,14 @@ class ExamMonitoringPage extends StatelessWidget {
 
   // Update the status of a student
   Future<void> _updateStudentStatus(
-      FirebaseFirestore db, String examId, String studentId, String status) async {
+    FirebaseFirestore db,
+    String examId,
+    String studentId,
+    String status,
+  ) async {
     try {
-      await db.collection("exams")
+      await db
+          .collection("exams")
           .doc(examId)
           .collection("students")
           .doc(studentId)
