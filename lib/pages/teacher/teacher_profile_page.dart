@@ -49,7 +49,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1220),
+      backgroundColor: Color.fromARGB(255, 14, 45, 73),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -59,7 +59,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              color: const Color(0xFF0F2B45),
+              color: const Color(0xFF0A1F36),
               child: const Text(
                 "Profile",
                 style: TextStyle(

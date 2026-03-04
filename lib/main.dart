@@ -90,9 +90,9 @@ class MyApp extends StatelessWidget {
             );
           },
           routes: [
-            //-----------------------------------
+            
             // DASHBOARD
-            //-----------------------------------
+            
             GoRoute(
               path: '/teacher-dashboard',
               pageBuilder: (context, state) {
@@ -134,18 +134,16 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            //-----------------------------------
+            
             // TEACHER EXAMS
-            //-----------------------------------
+            
             GoRoute(
               path: '/teacher-exams',
               pageBuilder: (context, state) =>
                   NoTransitionPage(child: const TeacherExamsPage()),
             ),
 
-            //-----------------------------------
             // MONITORING
-            //-----------------------------------
             GoRoute(
               path: '/teacher-monitoring',
               pageBuilder: (context, state) {
@@ -181,9 +179,9 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            //-----------------------------------
+            
             // STUDENT MANAGEMENT
-            //-----------------------------------
+            
             GoRoute(
               path: '/student-management',
               pageBuilder: (context, state) {
@@ -194,9 +192,9 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            //-----------------------------------
+            
             // SPECIFIC EXAM MONITORING
-            //-----------------------------------
+            
             GoRoute(
               name: 'examMonitoring',
               path: '/exam-monitoring/:examId',
@@ -207,9 +205,9 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            //-----------------------------------
+            
             // TEACHER PROFILE
-            //-----------------------------------
+            
             GoRoute(
               name: 'teacherProfile',
               path: '/teacherProfile/:teacherId',
@@ -220,9 +218,9 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            //-----------------------------------
+            
             // EDIT EXAM
-            //-----------------------------------
+            
             GoRoute(
               path: '/edit-exam/:examId',
               pageBuilder: (context, state) {
@@ -250,9 +248,9 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            //-----------------------------------
+            
             // EDIT QUESTION
-            //-----------------------------------
+            
             GoRoute(
               path: '/edit-question/:examDocId',
               pageBuilder: (context, state) => NoTransitionPage(
@@ -278,16 +276,32 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'FOTS: Teacher',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      title: 'Student TOT',
+      theme: ThemeData(
+        scaffoldBackgroundColor: Color.fromARGB(255, 14, 45, 73),
+        canvasColor: Color.fromARGB(255, 14, 45, 73),
+        scrollbarTheme: ScrollbarThemeData(
+          thumbColor: WidgetStateProperty.all(Color.fromARGB(255, 24, 39, 68)),
+          trackColor: WidgetStateProperty.all(Colors.black12),
+          trackBorderColor: WidgetStateProperty.all(Colors.transparent),
+          radius: const Radius.circular(8),
+          thickness: WidgetStateProperty.all(8),
+        ),
+
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          background: Color.fromARGB(255, 14, 45, 73),
+        ),
+      ),
+
       routerConfig: router,
     );
   }
 }
 
-// ------------------------------------------------
+
 // AUTH LISTENER (no changes needed)
-// ------------------------------------------------
+
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();

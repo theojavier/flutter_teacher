@@ -20,7 +20,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     final doc = await db.collection("users").doc(uid).get();
     if (!doc.exists) return null;
 
-    return doc.data()?["ID"]; // example "001-0711"
+    return doc.data()?["ID"];
   }
 
   @override
@@ -196,17 +196,51 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
       try {
         final examRef = db.collection("exams").doc(examId);
 
+        // Get exam data first (to know program/yearBlock)
+        final examSnap = await db.collection("exams").doc(examId).get();
+        final examData = examSnap.data(); // already Map<String, dynamic>?
+
+
         // delete inner questions
         final questionsSnap = await examRef.collection("questions").get();
         for (var doc in questionsSnap.docs) {
           await doc.reference.delete();
         }
 
+        // delete exam itself
         await examRef.delete();
+
+        // delete notifications for students in same program/yearBlock
+        if (examData != null) {
+          final program = examData["program"];
+          final yearBlock = examData["yearBlock"];
+
+          final studentsSnap = await db
+              .collection("users")
+              .where("role", isEqualTo: "student")
+              .where("program", isEqualTo: program)
+              .where("yearBlock", isEqualTo: yearBlock)
+              .get();
+
+          for (var studentDoc in studentsSnap.docs) {
+            final notifRef = studentDoc.reference.collection("notifications");
+            final notifSnap = await notifRef
+                .where("examId", isEqualTo: examId)
+                .get();
+
+            for (var notif in notifSnap.docs) {
+              await notif.reference.delete();
+            }
+          }
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Exam deleted successfully")),
+            const SnackBar(
+              content: Text(
+                "Exam and related notifications deleted successfully",
+              ),
+            ),
           );
         }
       } catch (e) {

@@ -117,7 +117,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF0B1220),
       body: StreamBuilder<QuerySnapshot>(
         stream: db
             .collection("exams")

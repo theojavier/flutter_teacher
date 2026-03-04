@@ -23,6 +23,7 @@
     }
   },
   "hosting": {
+    "target": "teacher-ba6d0",
     "public": "build/web",
     "ignore": [
       "firebase.json",

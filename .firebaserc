@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "rd-final"
-  }
+  },
+  "targets": {
+    "rd-final": {
+      "hosting": {
+        "teacher-ba6d0": [
+          "teacher-ba6d0"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
