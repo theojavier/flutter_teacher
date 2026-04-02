@@ -266,7 +266,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'Student TOT',
+      title: 'Teacher FOTS',
       theme: ThemeData(
         scaffoldBackgroundColor: Color.fromARGB(255, 14, 45, 73),
         canvasColor: Color.fromARGB(255, 14, 45, 73),

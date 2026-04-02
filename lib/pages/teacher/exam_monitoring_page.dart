@@ -6,6 +6,13 @@ class ExamMonitoringPage extends StatelessWidget {
   final String examId;
   const ExamMonitoringPage({super.key, required this.examId});
 
+  // Helper to determine the status color
+  Color _getStatusColor(String status, int cheatingCount) {
+    if (status == 'stopped') return Colors.redAccent; // Caught Cheating
+    if (cheatingCount > 0) return Colors.yellowAccent; // Suspicious activity
+    return Colors.greenAccent; // Usual activity
+  }
+
   @override
   Widget build(BuildContext context) {
     final db = FirebaseFirestore.instance;
@@ -16,85 +23,79 @@ class ExamMonitoringPage extends StatelessWidget {
         backgroundColor: const Color(0xFF0A1F36),
         title: const Text(
           "Monitor Exams",
-          style: TextStyle(
-            color: Color(0xFFE6F0F8),
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Color(0xFFE6F0F8), fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: StreamBuilder<QuerySnapshot>(
+          // Removed the .where filter so you can see students even after they are "stopped"
           stream: db
               .collection("exams")
               .doc(examId)
               .collection("students")
-              .where(
-                "status",
-                isEqualTo: "incompleted",
-              ) // Students who need to retake
               .snapshots(),
           builder: (context, studentSnapshot) {
             if (studentSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (!studentSnapshot.hasData ||
-                studentSnapshot.data!.docs.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text("No students to monitor."),
+            if (!studentSnapshot.hasData || studentSnapshot.data!.docs.isEmpty) {
+              return const Center(
+                child: Text("No students to monitor.", 
+                style: TextStyle(color: Colors.white70)),
               );
             }
 
             final students = studentSnapshot.data!.docs;
 
             return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
               itemCount: students.length,
               itemBuilder: (context, sIndex) {
                 final student = students[sIndex];
                 final studentData = student.data() as Map<String, dynamic>;
 
-                final cheatingCount = studentData['cheatingCount'] ?? 0;
-                final status = studentData['status'];
+                final int cheatingCount = studentData['cheatingCount'] ?? 0;
+                final String status = studentData['status'] ?? 'active';
+                
+                // Get our dynamic color
+                final Color statusColor = _getStatusColor(status, cheatingCount);
 
-                return ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(studentData['name'] ?? 'Unknown'),
-                  subtitle: Text(
-                    "Status: $status, Cheating count: $cheatingCount",
+                return Card(
+                  color: const Color(0xFF163E5F),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    // Highlighting the border with the status color
+                    side: BorderSide(color: statusColor.withOpacity(0.5), width: 2),
                   ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      // Update status of student to allow retake or stop the exam
-                      _updateStudentStatus(db, examId, student.id, value);
-                    },
-                    itemBuilder: (context) {
-                      return [
-                        const PopupMenuItem<String>(
-                          value: 'allowed_to_retake',
-                          child: Text("Allow Retake"),
-                        ),
-                        const PopupMenuItem<String>(
-                          value: 'stopped',
-                          child: Text("Stop Exam"),
-                        ),
-                      ];
-                    },
-                    icon: const Icon(Icons.more_vert),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: statusColor,
+                      child: Icon(
+                        status == 'stopped' ? Icons.block : Icons.person,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    title: Text(
+                      studentData['name'] ?? 'Unknown',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      "Status: ${status.toUpperCase()}\nViolations: $cheatingCount",
+                      style: TextStyle(color: statusColor.withOpacity(0.9)),
+                    ),
+                    isThreeLine: true,
+                    trailing: PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                      onSelected: (value) => _updateStudentStatus(db, examId, student.id, value),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(value: 'allowed_to_retake', child: Text("Allow Retake")),
+                        const PopupMenuItem(value: 'stopped', child: Text("Stop Exam (Mark Cheating)")),
+                      ],
+                    ),
                   ),
-                  onTap: () {
-                    // Navigate to retake exam page if status is allowed
-                    if (status == "allowed_to_retake") {
-                      context.goNamed(
-                        "examRetake",
-                        pathParameters: {"examId": examId},
-                      );
-                    }
-                  },
                 );
               },
             );
@@ -104,24 +105,16 @@ class ExamMonitoringPage extends StatelessWidget {
     );
   }
 
-  // Update the status of a student
-  Future<void> _updateStudentStatus(
-    FirebaseFirestore db,
-    String examId,
-    String studentId,
-    String status,
-  ) async {
+  Future<void> _updateStudentStatus(FirebaseFirestore db, String examId, String studentId, String status) async {
     try {
       await db
           .collection("exams")
           .doc(examId)
           .collection("students")
           .doc(studentId)
-          .update({
-            "status": status, // Update the student status
-          });
+          .update({"status": status});
     } catch (e) {
-      print("Error updating student status: $e");
+      debugPrint("Error updating student status: $e");
     }
   }
 }
