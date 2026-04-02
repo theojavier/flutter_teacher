@@ -1,10 +1,12 @@
 // lib/pages/edit_question_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class EditQuestionPage extends StatefulWidget {
-  final String? examDocId;
-  const EditQuestionPage({super.key, required this.examDocId});
+  final String examDocId;
+  const EditQuestionPage({Key? key, required this.examDocId}) : super(key: key);
 
   @override
   State<EditQuestionPage> createState() => _EditQuestionPageState();
@@ -22,7 +24,35 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   @override
   void initState() {
     super.initState();
-    _loadQuestions();
+    FirebaseAuth.instance
+        .authStateChanges()
+        .firstWhere((u) => u != null)
+        .then((_) {
+          _loadQuestions();
+        })
+        .catchError((_) {
+          // fallback: try after a short delay
+          Future.delayed(const Duration(seconds: 1), _loadQuestions);
+        });
+  }
+
+  Future<void> callLoadExamQuestions(String examId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      await FirebaseAuth.instance.authStateChanges().firstWhere(
+        (u) => u != null,
+      );
+    }
+    final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+
+    final functions = FirebaseFunctions.instanceFor(region: 'asia-southeast1');
+    try {
+      final res = await functions.httpsCallable('loadExamQuestions').call({
+        'examId': examId,
+      });
+    } catch (e) {
+      debugPrint('Error calling loadExamQuestions: $e');
+    }
   }
 
   Future<void> _loadQuestions() async {
@@ -31,21 +61,35 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
       _error = null;
     });
 
+    // Wait for auth if currentUser is null
+    var user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      user = await FirebaseAuth.instance.authStateChanges().firstWhere(
+        (u) => u != null,
+      );
+    }
+
+    // Optional: force-refresh token for debugging
+    await user!.getIdToken(true);
+
     try {
-      final snap = await _db
-          .collection('exams')
-          .doc(widget.examDocId)
-          .collection('questions')
-          .orderBy('type')
-          .get();
+      final functions = FirebaseFunctions.instanceFor(
+        region: 'asia-southeast1',
+      );
+      final result = await functions.httpsCallable('loadExamQuestions').call({
+        'examId': widget.examDocId,
+      });
+
+      final List<dynamic> questionsData = result.data['questions'];
 
       _questions.clear();
       _existingMap.clear();
 
-      for (final doc in snap.docs) {
-        final q = _QuestionLocal.fromFirestore(doc.id, doc.data());
-        _questions.add(q);
-        _existingMap[doc.id] = q;
+      for (final qData in questionsData) {
+        final docId = qData['id'] as String;
+        final qLocal = _QuestionLocal.fromFirestore(docId, qData);
+        _questions.add(qLocal);
+        _existingMap[docId] = qLocal;
       }
     } catch (e) {
       _error = 'Failed to load questions: $e';
@@ -95,32 +139,38 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
       }
     }
 
-    final batch = _db.batch();
-    final colRef = _db
-        .collection('exams')
-        .doc(widget.examDocId)
-        .collection('questions');
-
     try {
+      final functions = FirebaseFunctions.instanceFor(
+        region: 'asia-southeast1',
+      );
+
       for (final q in _questions) {
         if (q.isMarkedForDelete) {
           if (q.docId != null) {
-            batch.delete(colRef.doc(q.docId));
+            await _db
+                .collection('exams')
+                .doc(widget.examDocId)
+                .collection('questions')
+                .doc(q.docId!)
+                .delete();
           }
           continue;
         }
 
         final data = q.toFirestoreMap();
 
-        if (q.isNew) {
-          final newDocRef = colRef.doc();
-          batch.set(newDocRef, data);
-        } else {
-          batch.update(colRef.doc(q.docId), data);
-        }
-      }
+        // Call your Cloud Function instead of writing directly
+        final result = await functions.httpsCallable('saveQuestion').call({
+          'examId': widget.examDocId,
+          'questionId': q.docId,
+          'questionText': data['questionText'],
+          'options': data['options'],
+          'correctAnswer': data['correctAnswer'],
+          'type': data['type'],
+        });
 
-      await batch.commit();
+        debugPrint('Save result: ${result.data}');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Questions updated successfully.')),
@@ -174,7 +224,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
           ),
         ),
         const SizedBox(height: 8),
-        ...items.map((q) => _buildQuestionCard(q, indent: indent)),
+        ...items.map((q) => _buildQuestionCard(q, indent: indent)).toList(),
       ],
     );
   }
@@ -314,14 +364,24 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                         const SizedBox(width: 12),
                         DropdownButton<String>(
                           value: q.correctAnswer ?? 'True',
+                          dropdownColor: const Color(
+                            0xFF132033,
+                          ), // background of dropdown menu
+                          style: const TextStyle(color: Color(0xFFE6F0F8)),
                           items: const [
                             DropdownMenuItem(
                               value: 'True',
-                              child: Text('True'),
+                              child: Text(
+                                'True',
+                                style: TextStyle(color: Color(0xFFE6F0F8)),
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'False',
-                              child: Text('False'),
+                              child: Text(
+                                'False',
+                                style: TextStyle(color: Color(0xFFE6F0F8)),
+                              ),
                             ),
                           ],
                           onChanged: (v) => setState(() => q.correctAnswer = v),
@@ -503,9 +563,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
 
   @override
   void dispose() {
-    for (final q in _questions) {
-      q.dispose();
-    }
+    for (final q in _questions) q.dispose();
     super.dispose();
   }
 
@@ -538,7 +596,7 @@ class _QuestionLocal {
   // controllers
   final TextEditingController questionTextController;
   final List<TextEditingController> optionControllers; // multiple-choice
-  final TextEditingController poolController; // matching pool 
+  final TextEditingController poolController; // matching pool
   int? correctIndex; // for multiple-choice
   String? correctAnswer; // for true-false and matching
 
@@ -590,9 +648,9 @@ class _QuestionLocal {
       if (d['correctAnswer'] != null) {
         final ca = d['correctAnswer'].toString();
         final idx = int.tryParse(ca);
-        if (idx != null) {
+        if (idx != null)
           correctIndex = idx;
-        } else {
+        else {
           // find matching option index
           final idx2 = optionsRaw.indexOf(ca);
           if (idx2 >= 0) correctIndex = idx2;
@@ -669,9 +727,7 @@ class _QuestionLocal {
 
   void dispose() {
     questionTextController.dispose();
-    for (final c in optionControllers) {
-      c.dispose();
-    }
+    for (final c in optionControllers) c.dispose();
     poolController.dispose();
   }
 }
@@ -788,15 +844,15 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              initialValue: _type,
+              value: _type,
               decoration: const InputDecoration(
                 labelText: 'Type',
                 labelStyle: TextStyle(color: Color(0xFF9DB8D1)),
                 filled: true,
                 fillColor: Color(0xFF0D1524),
               ),
-              dropdownColor: const Color(0xFF132033), 
-              style: const TextStyle(color: Color(0xFFE6F0F8)), 
+              dropdownColor: const Color(0xFF132033),
+              style: const TextStyle(color: Color(0xFFE6F0F8)),
               items: const [
                 DropdownMenuItem(
                   value: 'multiple-choice',
@@ -975,8 +1031,8 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
             backgroundColor: const Color(0xFF4DA3FF),
             foregroundColor: Colors.white,
           ),
-          onPressed: _create,
           child: const Text('Create'),
+          onPressed: _create,
         ),
       ],
     );

@@ -255,19 +255,9 @@ class MyApp extends StatelessWidget {
               path: '/edit-question/:examDocId',
               pageBuilder: (context, state) => NoTransitionPage(
                 child: EditQuestionPage(
-                  examDocId: state.pathParameters['examDocId'],
+                  examDocId: state.pathParameters['examDocId']!,
                 ),
               ),
-            ),
-
-            GoRoute(
-              path: '/edit-question',
-              pageBuilder: (context, state) {
-                final extra = state.extra as Map<String, dynamic>? ?? {};
-                return NoTransitionPage(
-                  child: EditQuestionPage(examDocId: extra['examDocId']),
-                );
-              },
             ),
           ],
         ),

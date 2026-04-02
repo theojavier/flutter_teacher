@@ -184,84 +184,79 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     );
   }
 
-  Future<void> _deleteExam(String examId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Exam"),
-        content: const Text("Are you sure you want to delete this exam?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("Delete"),
-          ),
-        ],
-      ),
-    );
+ Future<void> _deleteExam(String examId) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("Delete Exam"),
+      content: const Text("Are you sure you want to delete this exam?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text("Delete"),
+        ),
+      ],
+    ),
+  );
 
-    if (confirmed == true) {
-      try {
-        final examRef = db.collection("exams").doc(examId);
+  if (confirm == true) {
+    try {
+      final db = FirebaseFirestore.instance;
+      final examRef = db.collection("exams").doc(examId);
 
-        // Get exam data first (to know program/yearBlock)
-        final examSnap = await db.collection("exams").doc(examId).get();
-        final examData = examSnap.data(); // already Map<String, dynamic>?
+      // Get exam data (program/yearBlock)
+      final examSnap = await examRef.get();
+      final examData = examSnap.data();
 
+      // Delete questions subcollection
+      final questionsSnap = await examRef.collection("questions").get();
+      for (var q in questionsSnap.docs) {
+        await q.reference.delete();
+      }
 
-        // delete inner questions
-        final questionsSnap = await examRef.collection("questions").get();
-        for (var doc in questionsSnap.docs) {
-          await doc.reference.delete();
-        }
+      // Delete exam itself
+      await examRef.delete();
 
-        // delete exam itself
-        await examRef.delete();
+      // Delete notifications for students in same program/yearBlock
+      if (examData != null) {
+        final program = examData["program"];
+        final yearBlock = examData["yearBlock"];
 
-        // delete notifications for students in same program/yearBlock
-        if (examData != null) {
-          final program = examData["program"];
-          final yearBlock = examData["yearBlock"];
+        final studentsSnap = await db
+            .collection("users")
+            .where("role", isEqualTo: "student")
+            .where("program", isEqualTo: program)
+            .where("yearBlock", isEqualTo: yearBlock)
+            .get();
 
-          final studentsSnap = await db
-              .collection("users")
-              .where("role", isEqualTo: "student")
-              .where("program", isEqualTo: program)
-              .where("yearBlock", isEqualTo: yearBlock)
-              .get();
+        for (var studentDoc in studentsSnap.docs) {
+          final notifRef = studentDoc.reference.collection("notifications");
+          final notifSnap =
+              await notifRef.where("examId", isEqualTo: examId).get();
 
-          for (var studentDoc in studentsSnap.docs) {
-            final notifRef = studentDoc.reference.collection("notifications");
-            final notifSnap = await notifRef
-                .where("examId", isEqualTo: examId)
-                .get();
-
-            for (var notif in notifSnap.docs) {
-              await notif.reference.delete();
-            }
+          for (var notif in notifSnap.docs) {
+            await notif.reference.delete();
           }
         }
+      }
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Exam and related notifications deleted successfully",
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Error deleting exam: $e")));
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Exam and related notifications deleted successfully")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error deleting exam: $e")),
+        );
       }
     }
   }
+}
 }
