@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class ForgotPage extends StatefulWidget {
   const ForgotPage({super.key});
@@ -34,42 +35,23 @@ class _ForgotPageState extends State<ForgotPage> {
     setState(() => isLoading = true);
 
     try {
-      // Verify Teacher ID exists in Firestore
-      final query = await db
-          .collection("users")
-          .where(
-            "ID",
-            isEqualTo: teacherId,
-          ) // <-- Use correct Firestore field name
-          .limit(1)
-          .get();
+      final callable = FirebaseFunctions.instanceFor(
+        region: 'asia-southeast1',
+      ).httpsCallable('resetPasswordById');
 
-      if (query.docs.isEmpty) {
-        _showError("No account found with Teacher ID $teacherId");
-        setState(() => isLoading = false);
-        return;
-      }
-
-      final data = query.docs.first.data();
-      final firestoreEmail = data["email"];
-
-      if (firestoreEmail == null || firestoreEmail != email) {
-        _showError("Email does not match this Teacher ID");
-        setState(() => isLoading = false);
-        return;
-      }
-
-      // Send RESET EMAIL
+      await callable.call({"id": teacherId, "email": email});
       await auth.sendPasswordResetEmail(email: email);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Password reset email sent to $email")),
         );
-        // Wait a moment, then go back to login
+
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) context.push('/login');
       }
+    } on FirebaseFunctionsException catch (e) {
+      _showError(e.message ?? "Verification failed");
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? "Error sending reset email");
     } catch (e) {
