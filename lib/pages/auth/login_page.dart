@@ -151,7 +151,7 @@ class _LoginPageState extends State<LoginPage> {
               width: double.infinity,
               child: TextField(
                 controller: passwordController,
-                obscureText: !isPasswordVisible, // 👈 FIXED variable
+                obscureText: !isPasswordVisible, 
                 decoration: InputDecoration(
                   hintText: "Password",
                   border: OutlineInputBorder(

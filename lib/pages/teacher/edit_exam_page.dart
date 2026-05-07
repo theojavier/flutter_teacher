@@ -174,6 +174,8 @@ class _EditExamPageState extends State<EditExamPage> {
         await _db.collection("examResults").doc(examId).set({
           "teacherId": _teacherId,
           "examId": examId,
+          "yearBlock":_yearBlockController.text.trim(),
+          "program":_programController.text.trim(),
         }, SetOptions(merge: true));
 
         if (mounted) {
@@ -191,6 +193,8 @@ class _EditExamPageState extends State<EditExamPage> {
         await _db.collection("examResults").doc(examId).set({
           "teacherId": _teacherId,
           "examId": examId,
+          "yearBlock":_yearBlockController.text.trim(),
+          "program":_programController.text.trim(),
         }, SetOptions(merge: true));
 
         if (mounted) {
