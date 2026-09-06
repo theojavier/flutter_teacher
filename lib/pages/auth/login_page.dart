@@ -10,7 +10,7 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -68,8 +68,10 @@ class _LoginPageState extends State<LoginPage> {
       final userCredential = await auth.signInWithCustomToken(token);
 
       if (userCredential.user == null) {
-        _showError("Authentication failed");
-        setState(() => isLoading = false);
+        if (mounted) {
+          _showError("Authentication failed");
+          setState(() => isLoading = false);
+        }
         return;
       }
 
@@ -77,11 +79,11 @@ class _LoginPageState extends State<LoginPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("userId", userCredential.user!.uid);
       await prefs.setString("teacherId", id);
-      await prefs.setString("email", data["email"]);
+      await prefs.setString("email", data["email"] ?? "");
       await prefs.setString("name", data["name"] ?? "");
       await prefs.setString("major", data["major"] ?? "");
       await prefs.setString("yearBlock", data["yearBlock"] ?? "");
-
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Welcome Teacher!")));
@@ -109,113 +111,110 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-    
-         body: Center(
-  child: SingleChildScrollView(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(
-        maxWidth: 400, // 👈 prevents weird web stretching
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              "assets/images/Fots.png",
-              width: 200,
-              height: 200,
+
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 400, // 👈 prevents weird web stretching
             ),
-            const SizedBox(height: 60),
-
-            SizedBox(
-              width: double.infinity,
-              child: TextField(
-                controller: idController,
-                decoration: InputDecoration(
-                  hintText: "Teacher ID",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    "assets/images/Fots.png",
+                    width: 200,
+                    height: 200,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                ),
-              ),
-            ),
+                  const SizedBox(height: 60),
 
-            const SizedBox(height: 25),
-
-            SizedBox(
-              width: double.infinity,
-              child: TextField(
-                controller: passwordController,
-                obscureText: !isPasswordVisible, // 👈 FIXED variable
-                decoration: InputDecoration(
-                  hintText: "Password",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        isPasswordVisible = !isPasswordVisible;
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            isLoading
-                ? const CircularProgressIndicator()
-                : SizedBox(
+                  SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isFormFilled ? _login : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            isFormFilled ? Colors.green : Colors.grey,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
+                    child: TextField(
+                      controller: idController,
+                      decoration: InputDecoration(
+                        hintText: "Teacher ID",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
                       ),
-                      child: const Text("Login"),
                     ),
                   ),
 
-            const SizedBox(height: 20),
+                  const SizedBox(height: 25),
 
-            TextButton(
-              onPressed: () => context.go('/forgot'),
-              child: const Text(
-                "Forgot Password?",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextField(
+                      controller: passwordController,
+                      obscureText: !isPasswordVisible, // 👈 FIXED variable
+                      decoration: InputDecoration(
+                        hintText: "Password",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              isPasswordVisible = !isPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  isLoading
+                      ? const CircularProgressIndicator()
+                      : SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isFormFilled ? _login : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isFormFilled
+                                  ? Colors.green
+                                  : Colors.grey,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text("Login"),
+                          ),
+                        ),
+
+                  const SizedBox(height: 20),
+
+                  TextButton(
+                    onPressed: () => context.go('/forgot'),
+                    child: const Text(
+                      "Forgot Password?",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-),
-        
-      
     );
   }
-
 }

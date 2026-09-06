@@ -43,8 +43,6 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
   bool _isDrawerOpen = false;
   late int selectedIndex;
 
-  late final List<Widget> _pages;
-
   @override
   void initState() {
     super.initState();

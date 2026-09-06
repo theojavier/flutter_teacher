@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "rd-final"
+    "default": "rd-final",
+    "FOTS_Teacher": "rd-final"
   },
   "targets": {
     "rd-final": {

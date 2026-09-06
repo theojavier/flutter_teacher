@@ -19,7 +19,6 @@ class EditExamPage extends StatefulWidget {
 class _EditExamPageState extends State<EditExamPage> {
   final _formKey = GlobalKey<FormState>();
   final _db = FirebaseFirestore.instance;
-  final _examService = ExamService();
   bool _isSaving = false;
 
   final _programController = TextEditingController();
@@ -47,24 +46,27 @@ class _EditExamPageState extends State<EditExamPage> {
   }
 
   // Load the teacher ID from Firebase if not passed
-  void _loadTeacherId() async {
+  Future<void> _loadTeacherId() async {
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      final doc = await _db.collection('users').doc(currentUser.uid).get();
-      if (doc.exists) {
-        setState(() {
-          _teacherId = doc.data()?['ID'];
-        });
-      }
+    if (currentUser == null) return;
+
+    final doc = await _db.collection('users').doc(currentUser.uid).get();
+    if (!mounted) return;
+
+    if (doc.exists) {
+      setState(() {
+        _teacherId = doc.data()?['ID'];
+      });
     }
   }
 
   // Load exam data if editing an existing exam
-  void _loadExam(String id) async {
+  Future<void> _loadExam(String id) async {
     final doc = await FirebaseFirestore.instance
         .collection('exams')
         .doc(id)
         .get();
+    if (!mounted) return;
     if (doc.exists) {
       _setControllers(doc.data()!);
     }

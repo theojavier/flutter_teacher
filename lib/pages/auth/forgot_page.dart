@@ -8,7 +8,7 @@ class ForgotPage extends StatefulWidget {
   const ForgotPage({super.key});
 
   @override
-  _ForgotPageState createState() => _ForgotPageState();
+  State<ForgotPage> createState() => _ForgotPageState();
 }
 
 class _ForgotPageState extends State<ForgotPage> {

@@ -194,3 +194,78 @@ exports.notifyTeacherTest = functions.https.onCall(async (data, context) => {
     throw error;
   }
 });
+
+exports.loadExamQuestions = functions.region('asia-southeast1').https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  const examId = data.examId;
+  if (!examId || typeof examId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'examId is required');
+  }
+
+  const examRef = admin.firestore().collection('exams').doc(examId);
+  const examSnap = await examRef.get();
+  if (!examSnap.exists) {
+    return { questions: [] };
+  }
+
+  const questionsSnap = await examRef.collection('questions').get();
+  const questions = questionsSnap.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+
+  return { questions };
+});
+
+exports.saveQuestion = functions.region('asia-southeast1').https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  const examId = data.examId;
+  const questionId = data.questionId;
+  const questionText = data.questionText;
+  const options = data.options;
+  const correctAnswer = data.correctAnswer;
+  const type = data.type;
+
+  if (!examId || typeof examId !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'examId is required');
+  }
+  if (!questionText || typeof questionText !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'questionText is required');
+  }
+  if (!type || typeof type !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'type is required');
+  }
+  if (!Array.isArray(options)) {
+    throw new functions.https.HttpsError('invalid-argument', 'options must be an array');
+  }
+
+  const examRef = admin.firestore().collection('exams').doc(examId);
+  const examSnap = await examRef.get();
+  if (!examSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Exam not found');
+  }
+
+  const questionRef = questionId
+    ? examRef.collection('questions').doc(questionId)
+    : examRef.collection('questions').doc();
+
+  const payload = {
+    questionText,
+    type,
+    options,
+    correctAnswer,
+  };
+
+  await questionRef.set(payload, { merge: true });
+
+  return {
+    success: true,
+    id: questionRef.id,
+  };
+});

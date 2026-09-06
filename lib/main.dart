@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/login',
           pageBuilder: (context, state) =>
-              NoTransitionPage(child: const LoginPage()),
+              NoTransitionPage(child: LoginPage())
         ),
         GoRoute(
           path: '/forgot',
@@ -88,11 +88,9 @@ class MyApp extends StatelessWidget {
               schedulePage: TeacherMonitoringPage(teacherId: teacherId),
               child: child,
             );
-          },
+          },/*  */
           routes: [
-            
             // DASHBOARD
-            
             GoRoute(
               path: '/teacher-dashboard',
               pageBuilder: (context, state) {
@@ -134,9 +132,7 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            
             // TEACHER EXAMS
-            
             GoRoute(
               path: '/teacher-exams',
               pageBuilder: (context, state) =>
@@ -179,9 +175,7 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            
             // STUDENT MANAGEMENT
-            
             GoRoute(
               path: '/student-management',
               pageBuilder: (context, state) {
@@ -192,9 +186,7 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            
             // SPECIFIC EXAM MONITORING
-            
             GoRoute(
               name: 'examMonitoring',
               path: '/exam-monitoring/:examId',
@@ -205,9 +197,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            
             // TEACHER PROFILE
-            
             GoRoute(
               name: 'teacherProfile',
               path: '/teacherProfile/:teacherId',
@@ -218,9 +208,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            
             // EDIT EXAM
-            
             GoRoute(
               path: '/edit-exam/:examId',
               pageBuilder: (context, state) {
@@ -248,14 +236,12 @@ class MyApp extends StatelessWidget {
               },
             ),
 
-            
             // EDIT QUESTION
-            
-            GoRoute(
+           GoRoute(
               path: '/edit-question/:examDocId',
               pageBuilder: (context, state) => NoTransitionPage(
                 child: EditQuestionPage(
-                  examDocId: state.pathParameters['examDocId']!,
+                  docId: state.pathParameters['examDocId']!, 
                 ),
               ),
             ),
@@ -280,7 +266,12 @@ class MyApp extends StatelessWidget {
 
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
-          background: Color.fromARGB(255, 14, 45, 73),
+          surface: Color.fromARGB(
+            255,
+            14,
+            45,
+            73,
+          ), 
         ),
       ),
 
@@ -288,7 +279,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
 
 // AUTH LISTENER (no changes needed)
 
