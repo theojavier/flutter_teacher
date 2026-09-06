@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class EditQuestionPage extends StatefulWidget {
   final String examDocId;
-  const EditQuestionPage({Key? key, required this.examDocId}) : super(key: key);
+  const EditQuestionPage({super.key, required this.examDocId});
 
   @override
   State<EditQuestionPage> createState() => _EditQuestionPageState();
@@ -63,11 +63,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
 
     // Wait for auth if currentUser is null
     var user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      user = await FirebaseAuth.instance.authStateChanges().firstWhere(
+    user ??= await FirebaseAuth.instance.authStateChanges().firstWhere(
         (u) => u != null,
       );
-    }
 
     // Optional: force-refresh token for debugging
     await user!.getIdToken(true);
@@ -224,7 +222,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
           ),
         ),
         const SizedBox(height: 8),
-        ...items.map((q) => _buildQuestionCard(q, indent: indent)).toList(),
+        ...items.map((q) => _buildQuestionCard(q, indent: indent)),
       ],
     );
   }
@@ -563,7 +561,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
 
   @override
   void dispose() {
-    for (final q in _questions) q.dispose();
+    for (final q in _questions) {
+      q.dispose();
+    }
     super.dispose();
   }
 
@@ -648,9 +648,9 @@ class _QuestionLocal {
       if (d['correctAnswer'] != null) {
         final ca = d['correctAnswer'].toString();
         final idx = int.tryParse(ca);
-        if (idx != null)
+        if (idx != null) {
           correctIndex = idx;
-        else {
+        } else {
           // find matching option index
           final idx2 = optionsRaw.indexOf(ca);
           if (idx2 >= 0) correctIndex = idx2;
@@ -727,7 +727,9 @@ class _QuestionLocal {
 
   void dispose() {
     questionTextController.dispose();
-    for (final c in optionControllers) c.dispose();
+    for (final c in optionControllers) {
+      c.dispose();
+    }
     poolController.dispose();
   }
 }
@@ -844,7 +846,7 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(
                 labelText: 'Type',
                 labelStyle: TextStyle(color: Color(0xFF9DB8D1)),
@@ -1031,8 +1033,8 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
             backgroundColor: const Color(0xFF4DA3FF),
             foregroundColor: Colors.white,
           ),
-          child: const Text('Create'),
           onPressed: _create,
+          child: const Text('Create'),
         ),
       ],
     );
