@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
@@ -14,7 +16,7 @@ import 'pages/teacher/exam_monitoring_page.dart';
 import 'pages/teacher/teacher_monitoring_page.dart';
 import 'pages/teacher/teacher_exams_page.dart';
 import 'pages/teacher/student_management_page.dart';
-import 'pages/teacher/teacher_dashboard_page.dart';
+import 'pages/teacher/teacher_dashboard_page.dart' hide ResponsiveScaffold;
 import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
 
 import 'widgets/responsive_scaffold.dart';
@@ -22,6 +24,7 @@ import 'widgets/responsive_scaffold.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await FirebaseAuth.instance.signOut();
 
   await initializeFCM();
 
@@ -33,10 +36,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final refreshAuthChanges =
+        kIsWeb || defaultTargetPlatform != TargetPlatform.windows;
     final GoRouter router = GoRouter(
-      refreshListenable: GoRouterRefreshStream(
-        FirebaseAuth.instance.authStateChanges(),
-      ),
+      refreshListenable: refreshAuthChanges
+          ? GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges())
+          : null,
 
       initialLocation: '/login',
 
@@ -104,10 +109,11 @@ class MyApp extends StatelessWidget {
                 }
 
                 return NoTransitionPage(
-                  child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  child: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     future: FirebaseFirestore.instance
                         .collection('users')
-                        .doc(uid)
+                        .where('UID', isEqualTo: uid)
+                        .limit(1)
                         .get(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -116,14 +122,19 @@ class MyApp extends StatelessWidget {
                         );
                       }
 
-                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return const Scaffold(
                           body: Center(child: Text('User not found')),
                         );
                       }
 
-                      final data = snapshot.data!.data()!;
-                      final teacherId = data['ID'] ?? '';
+                      final data = snapshot.data!.docs.first.data();
+                      final teacherId = data['ID'];
+                      if (teacherId is! String || teacherId.isEmpty) {
+                        return const Scaffold(
+                          body: Center(child: Text('Teacher ID is missing')),
+                        );
+                      }
 
                       return TeacherDashboardPage(teacherId: teacherId);
                     },

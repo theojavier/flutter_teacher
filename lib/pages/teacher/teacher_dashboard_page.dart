@@ -16,15 +16,23 @@ class TeacherDashboardPage extends StatelessWidget {
         backgroundColor: const Color(0xFF0A1F36),
         title: const Text(
           "Teacher Dashboard",
-          style: TextStyle(color: Color(0xFFE6F0F8), fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFFE6F0F8),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: db.collection('exams').where('teacherId', isEqualTo: teacherId).snapshots(),
+        stream: db
+            .collection('exams')
+            .where('teacherId', isEqualTo: teacherId)
+            .snapshots(),
         builder: (context, examSnapshot) {
           if (!examSnapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: Colors.white));
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
           }
 
           final exams = examSnapshot.data!.docs;
@@ -33,7 +41,9 @@ class TeacherDashboardPage extends StatelessWidget {
             stream: _aggregateStreams(db, exams, now),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator(color: Colors.white));
+                return const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                );
               }
 
               final counts = snapshot.data!;
@@ -90,11 +100,7 @@ class TeacherDashboardPage extends StatelessWidget {
         color: color,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            offset: Offset(0, 4),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black26, offset: Offset(0, 4), blurRadius: 4),
         ],
       ),
       child: Row(
@@ -112,7 +118,11 @@ class TeacherDashboardPage extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 count.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -122,7 +132,10 @@ class TeacherDashboardPage extends StatelessWidget {
   }
 
   Stream<List<int>> _aggregateStreams(
-      FirebaseFirestore db, List<QueryDocumentSnapshot> exams, DateTime now) async* {
+    FirebaseFirestore db,
+    List<QueryDocumentSnapshot> exams,
+    DateTime now,
+  ) async* {
     while (true) {
       int totalStudents = 0;
       int totalFlagged = 0;
@@ -139,12 +152,19 @@ class TeacherDashboardPage extends StatelessWidget {
         if (isOngoing) {
           totalOngoing += 1;
 
-          final studentSnap = await db.collection('examResults').doc(examId).collection('students').get();
+          final studentSnap = await db
+              .collection('examResults')
+              .doc(examId)
+              .collection('students')
+              .get();
           totalStudents += studentSnap.size;
 
           final flaggedCount = studentSnap.docs
-              .where((doc) => (doc.data())['cheatingCount'] != null &&
-                  (doc.data())['cheatingCount'] > 0)
+              .where(
+                (doc) =>
+                    (doc.data())['cheatingCount'] != null &&
+                    (doc.data())['cheatingCount'] > 0,
+              )
               .length;
           totalFlagged += flaggedCount;
         }

@@ -1,6 +1,14 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+bool get _supportsFirebaseMessaging =>
+    kIsWeb ||
+    defaultTargetPlatform == TargetPlatform.android ||
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.macOS;
 
 /// Background handler MUST be a top-level function
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -10,6 +18,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 /// Call once during app startup (after Firebase.initializeApp())
 Future<void> initializeFCM() async {
+  if (!_supportsFirebaseMessaging) return;
+
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Optional: You can also set notification presentation for iOS
@@ -22,6 +32,8 @@ Future<void> initializeFCM() async {
 
 /// Register the teacher’s FCM token
 Future<void> registerTeacherFCMToken(String teacherId) async {
+  if (!_supportsFirebaseMessaging) return;
+
   final messaging = FirebaseMessaging.instance;
 
   // Request permission
@@ -50,6 +62,8 @@ Future<void> registerTeacherFCMToken(String teacherId) async {
 
 /// Remove token (on logout)
 Future<void> removeTeacherFCMToken(String teacherId) async {
+  if (!_supportsFirebaseMessaging) return;
+
   final token = await FirebaseMessaging.instance.getToken();
   if (token == null) return;
 

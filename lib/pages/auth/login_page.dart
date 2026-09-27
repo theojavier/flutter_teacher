@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -43,35 +42,40 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      final auth = FirebaseAuth.instance;
-      final functions = FirebaseFunctions.instanceFor(
-        region: 'asia-southeast1',
-      );
+      final query = await db
+          .collection('users')
+          .where('ID', isEqualTo: id)
+          .limit(1)
+          .get();
 
-      // Call the Cloud Function
-      final result = await functions.httpsCallable('loginWithTeacherId').call({
-        'teacherId': id,
-        'password': password,
-      });
-
-      final data = result.data;
-      final token = data['token'];
-      final role = data['role'];
-
-      if (role.toString().toLowerCase() != "teacher") {
-        _showError("Access denied (not a teacher)");
-        setState(() => isLoading = false);
+      if (query.docs.isEmpty) {
+        _showError('Teacher ID not found');
         return;
       }
 
-      // Sign in with the custom token
-      final userCredential = await auth.signInWithCustomToken(token);
+      final data = query.docs.first.data();
+      final email = data['email'];
+      final uid = data['UID'];
+      final role = data['role'];
 
-      if (userCredential.user == null) {
-        if (mounted) {
-          _showError("Authentication failed");
-          setState(() => isLoading = false);
-        }
+      if (email is! String || email.isEmpty || uid is! String || uid.isEmpty) {
+        _showError('Account setup error. Contact admin.');
+        return;
+      }
+
+      if (role.toString().toLowerCase() != "teacher") {
+        _showError("Access denied (not a teacher)");
+        return;
+      }
+
+      final userCredential = await auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (userCredential.user == null || userCredential.user!.uid != uid) {
+        await auth.signOut();
+        _showError('Account mismatch. Contact admin.');
         return;
       }
 
@@ -79,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("userId", userCredential.user!.uid);
       await prefs.setString("teacherId", id);
-      await prefs.setString("email", data["email"] ?? "");
+      await prefs.setString("email", email);
       await prefs.setString("name", data["name"] ?? "");
       await prefs.setString("major", data["major"] ?? "");
       await prefs.setString("yearBlock", data["yearBlock"] ?? "");
@@ -94,13 +98,13 @@ class _LoginPageState extends State<LoginPage> {
           extra: {"userId": userCredential.user!.uid},
         );
       }
-    } on FirebaseFunctionsException catch (e) {
-      _showError(e.message ?? "Login failed");
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? "Invalid ID or password");
     } catch (e) {
       _showError("Login failed: $e");
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
-
-    setState(() => isLoading = false);
   }
 
   void _showError(String msg) {
