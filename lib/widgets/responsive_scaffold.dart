@@ -17,7 +17,7 @@ class ResponsiveScaffold extends StatefulWidget {
   final Widget child;
   final Widget schedulePage;
   final int initialIndex;
-  
+
   final Widget? detailPage;
 
   const ResponsiveScaffold({
@@ -56,39 +56,38 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
   StreamSubscription<DocumentSnapshot>? _profileSubscription;
 
- Future<void> _loadUserProfile() async {
-  final firebaseUser = FirebaseAuth.instance.currentUser;
-  if (firebaseUser == null) {
-    setState(() {
-      headerName = "No user";
-      profileImageUrl = null;
-      headerSection = "";
-    });
-    return;
+  Future<void> _loadUserProfile() async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) {
+      setState(() {
+        headerName = "No user";
+        profileImageUrl = null;
+        headerSection = "";
+      });
+      return;
+    }
+
+    _userId = firebaseUser.uid;
+
+    // Show cached profile if exists
+    if (_cachedProfile != null) {
+      _updateProfileUI(_cachedProfile!);
+    }
+
+    // Cancel previous subscription
+    await _profileSubscription?.cancel();
+
+    // Subscribe to Firestore profile
+    _profileSubscription = FirebaseFirestore.instance
+        .collection("users")
+        .doc(_userId)
+        .snapshots()
+        .listen((doc) {
+          if (!doc.exists) return;
+          final data = doc.data()!;
+          _updateProfileUI(data);
+        });
   }
-
-  _userId = firebaseUser.uid;
-
-  // Show cached profile if exists
-  if (_cachedProfile != null) {
-    _updateProfileUI(_cachedProfile!);
-  }
-
-  // Cancel previous subscription
-  await _profileSubscription?.cancel();
-
-  // Subscribe to Firestore profile
-  _profileSubscription = FirebaseFirestore.instance
-      .collection("users")
-      .doc(_userId)
-      .snapshots()
-      .listen((doc) {
-    if (!doc.exists) return;
-    final data = doc.data()!;
-    _updateProfileUI(data);
-  });
-}
-
 
   void _refreshProfile() async {
     if (_userId == null) return;
@@ -163,7 +162,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
   }
 
   //  Centralized desktop detection
-    //  Centralized desktop detection
+  //  Centralized desktop detection
   bool _isDesktop(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
@@ -250,18 +249,6 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                     name: headerName,
                     section: headerSection,
                     profileImageUrl: profileImageUrl,
-                    onProfileTap: () {
-                      _refreshProfile();
-                      context.push('/teacherProfile/$_userId');
-                    },
-                    // onHistoryTap: () async {
-                    //   final prefs = await SharedPreferences.getInstance();
-                    //   final studentId = prefs.getString('studentId');
-                    //   context.go(
-                    //     '/exam-history',
-                    //     extra: {'studentId': studentId},
-                    //   );
-                    // },
                   ),
                   Expanded(
                     child: ListView(
@@ -300,12 +287,14 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     );
   }
 
-
   List<Widget> _menuTiles() => [
     ListTile(
       tileColor: Color(0xFF0F2B45),
       leading: const Icon(Icons.home, color: Colors.white),
-      title: const Text('Dashboard', style: TextStyle(color: Color(0xFFE6F0F8))),
+      title: const Text(
+        'Dashboard',
+        style: TextStyle(color: Color(0xFFE6F0F8)),
+      ),
       onTap: () => _onSelectPage(0),
     ),
     ListTile(
@@ -326,7 +315,24 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
         _onSelectPage(2);
       },
     ),
+    ListTile(
+      tileColor: Color(0xFF0F2B45),
+      leading: const Icon(Icons.person, color: Colors.white),
+      title: const Text(
+        'My Profile',
+        style: TextStyle(color: Color(0xFFE6F0F8)),
+      ),
+      onTap: _onOpenProfile,
+    ),
   ];
+
+  void _onOpenProfile() {
+    if (!_isDesktop(context)) Navigator.of(context).pop();
+    if (_userId == null) return;
+    _refreshProfile();
+    context.push('/teacherProfile/$_userId');
+  }
+
   void _logout(BuildContext context) async {
     try {
       // Sign out from Firebase
@@ -379,14 +385,6 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
             name: headerName,
             section: headerSection,
             profileImageUrl: profileImageUrl,
-            onProfileTap: () {
-              if (_userId != null) {
-                context.push('/teacherProfile/$_userId');
-              }
-            },
-            // onHistoryTap: () async {
-            //   context.push('/exam-history');
-            // },
           ),
           ..._menuTiles(),
         ],
