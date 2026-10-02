@@ -5,6 +5,10 @@ class ExamMonitoringPage extends StatelessWidget {
   final String examId;
   const ExamMonitoringPage({super.key, required this.examId});
 
+  final Color bgColor = const Color(0xFF0F172A);
+  final Color cardColor = const Color(0xFF1E293B);
+  final Color panelColor = const Color(0xFF243447);
+
   // Helper to determine the status color
   Color _getStatusColor(String status, int cheatingCount) {
     if (status == 'stopped') return Colors.redAccent; // Caught Cheating
@@ -17,14 +21,17 @@ class ExamMonitoringPage extends StatelessWidget {
     final db = FirebaseFirestore.instance;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F2B45),
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A1F36),
+        backgroundColor: bgColor,
         title: const Text(
           "Monitor Exams",
-          style: TextStyle(color: Color(0xFFE6F0F8), fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFFE6F0F8),
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        centerTitle: true,
+        centerTitle: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -40,10 +47,13 @@ class ExamMonitoringPage extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (!studentSnapshot.hasData || studentSnapshot.data!.docs.isEmpty) {
+            if (!studentSnapshot.hasData ||
+                studentSnapshot.data!.docs.isEmpty) {
               return const Center(
-                child: Text("No students to monitor.", 
-                style: TextStyle(color: Colors.white70)),
+                child: Text(
+                  "No students to monitor.",
+                  style: TextStyle(color: Colors.white70),
+                ),
               );
             }
 
@@ -57,17 +67,22 @@ class ExamMonitoringPage extends StatelessWidget {
 
                 final int cheatingCount = studentData['cheatingCount'] ?? 0;
                 final String status = studentData['status'] ?? 'active';
-                
+
                 // Get our dynamic color
-                final Color statusColor = _getStatusColor(status, cheatingCount);
+                final Color statusColor = _getStatusColor(
+                  status,
+                  cheatingCount,
+                );
 
                 return Card(
-                  color: const Color(0xFF163E5F),
+                  color: panelColor,
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    // Highlighting the border with the status color
-                    side: BorderSide(color: statusColor.withOpacity(0.5), width: 2),
+                    side: BorderSide(
+                      color: statusColor.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
                   ),
                   child: ListTile(
                     leading: CircleAvatar(
@@ -79,19 +94,31 @@ class ExamMonitoringPage extends StatelessWidget {
                     ),
                     title: Text(
                       studentData['name'] ?? 'Unknown',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     subtitle: Text(
                       "Status: ${status.toUpperCase()}\nViolations: $cheatingCount",
-                      style: TextStyle(color: statusColor.withOpacity(0.9)),
+                      style: TextStyle(
+                        color: statusColor.withValues(alpha: 0.9),
+                      ),
                     ),
                     isThreeLine: true,
                     trailing: PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert, color: Colors.white),
-                      onSelected: (value) => _updateStudentStatus(db, examId, student.id, value),
+                      onSelected: (value) =>
+                          _updateStudentStatus(db, examId, student.id, value),
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'allowed_to_retake', child: Text("Allow Retake")),
-                        const PopupMenuItem(value: 'stopped', child: Text("Stop Exam (Mark Cheating)")),
+                        const PopupMenuItem(
+                          value: 'allowed_to_retake',
+                          child: Text("Allow Retake"),
+                        ),
+                        const PopupMenuItem(
+                          value: 'stopped',
+                          child: Text("Stop Exam (Mark Cheating)"),
+                        ),
                       ],
                     ),
                   ),
@@ -104,7 +131,12 @@ class ExamMonitoringPage extends StatelessWidget {
     );
   }
 
-  Future<void> _updateStudentStatus(FirebaseFirestore db, String examId, String studentId, String status) async {
+  Future<void> _updateStudentStatus(
+    FirebaseFirestore db,
+    String examId,
+    String studentId,
+    String status,
+  ) async {
     try {
       await db
           .collection("exams")

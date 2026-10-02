@@ -189,28 +189,36 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           ? AppBar(
               backgroundColor: topColor,
               elevation: 0,
-              centerTitle: true,
+              centerTitle: false,
               automaticallyImplyLeading: false,
+              titleSpacing: 16,
               title: GestureDetector(
                 onTap: () => context.push('/teacher-dashboard'),
-                child: Image.asset(
-                  'assets/images/fots_teacher.png',
-                  height: 80,
-                  width: 120,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Image.asset(
+                    'assets/images/fots_teacher.png',
+                    height: 80,
+                    width: 120,
+                  ),
                 ),
               ),
               actions: _buildActions(context),
             )
           : AppBar(
               backgroundColor: topColor,
-              centerTitle: true,
+              centerTitle: false,
               automaticallyImplyLeading: false,
+              titleSpacing: 0,
               title: GestureDetector(
                 onTap: () => context.push('/teacher-dashboard'),
-                child: Image.asset(
-                  'assets/images/fots_teacher.png',
-                  height: 80,
-                  width: 120,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Image.asset(
+                    'assets/images/fots_teacher.png',
+                    height: 80,
+                    width: 120,
+                  ),
                 ),
               ),
               leading: (!isDesktop && isExamHtmlPage)

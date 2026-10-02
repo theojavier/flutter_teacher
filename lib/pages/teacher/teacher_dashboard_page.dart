@@ -218,7 +218,7 @@ class TeacherDashboardPage extends StatelessWidget {
                     DataRow(
                       cells: [
                         DataCell(Text('Sarah Jenkins')),
-                        DataCell(Text('Gaze Deviation')),
+                        DataCell(Text('Gaze Detection')),
                         DataCell(
                           Text(
                             '[Review]',
@@ -230,7 +230,7 @@ class TeacherDashboardPage extends StatelessWidget {
                     DataRow(
                       cells: [
                         DataCell(Text('Mike Rossi')),
-                        DataCell(Text('Speech detected')),
+                        DataCell(Text('Gaze Detection')),
                         DataCell(
                           Text(
                             '[Review]',
