@@ -18,30 +18,77 @@ import 'pages/teacher/teacher_exams_page.dart';
 import 'pages/teacher/student_management_page.dart';
 import 'pages/teacher/teacher_dashboard_page.dart' hide ResponsiveScaffold;
 import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
+import 'pages/teacher/exam_clips_page.dart';
 
 import 'widgets/responsive_scaffold.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await FirebaseAuth.instance.signOut();
+
+  // FIX 1: make context.push()/pushReplacement() update the browser URL too.
+  // (Since go_router 10 this is OFF by default, so pushed pages never
+  // changed the "#/..." part of the address bar.)
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+
+  // FIX 2: on web, Firebase restores the logged-in user asynchronously.
+  // If the router runs its first redirect before that finishes, it thinks
+  // you're logged out, sends you to /login, and then bounces you to
+  // /teacher-dashboard -> every reload "goes back" to the dashboard.
+  // Wait for the first auth state before building the router.
+  if (kIsWeb) {
+    await FirebaseAuth.instance.authStateChanges().first.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => null,
+    );
+  }
 
   await initializeFCM();
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  GoRouterRefreshStream? _refreshAuth;
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+
     final refreshAuthChanges =
         kIsWeb || defaultTargetPlatform != TargetPlatform.windows;
-    final GoRouter router = GoRouter(
-      refreshListenable: refreshAuthChanges
-          ? GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges())
-          : null,
+
+    if (refreshAuthChanges) {
+      _refreshAuth = GoRouterRefreshStream(
+        FirebaseAuth.instance.authStateChanges(),
+      );
+    }
+
+    // FIX 3: build the router ONCE. Before, it was created inside build(),
+    // so any rebuild (hot reload, theme change...) made a brand-new router
+    // that restarted at '/login' -> '/teacher-dashboard'.
+    _router = _buildRouter();
+  }
+
+  @override
+  void dispose() {
+    _refreshAuth?.dispose();
+    _router.dispose();
+    super.dispose();
+  }
+
+  GoRouter _buildRouter() {
+    return GoRouter(
+      refreshListenable: _refreshAuth,
 
       initialLocation: '/login',
 
@@ -51,8 +98,17 @@ class MyApp extends StatelessWidget {
 
         final loggingIn = path == '/login' || path == '/forgot';
 
-        if (!loggedIn && !loggingIn) return '/login';
-        if (loggedIn && loggingIn) return '/teacher-dashboard';
+        if (path == '/') {
+          return loggedIn ? '/teacher-dashboard' : '/login';
+        }
+
+        if (!loggedIn && !loggingIn) {
+          return '/login';
+        }
+
+        if (loggedIn && loggingIn) {
+          return '/teacher-dashboard';
+        }
 
         return null;
       },
@@ -63,7 +119,8 @@ class MyApp extends StatelessWidget {
         // -----------------------------
         GoRoute(
           path: '/login',
-          pageBuilder: (context, state) => NoTransitionPage(child: LoginPage()),
+          pageBuilder: (context, state) =>
+              NoTransitionPage(child: TeacherLoginPage()),
         ),
         GoRoute(
           path: '/forgot',
@@ -93,7 +150,6 @@ class MyApp extends StatelessWidget {
               child: child,
             );
           },
-          /*  */
           routes: [
             // DASHBOARD
             GoRoute(
@@ -148,6 +204,14 @@ class MyApp extends StatelessWidget {
               path: '/teacher-exams',
               pageBuilder: (context, state) =>
                   NoTransitionPage(child: const TeacherExamsPage()),
+            ),
+            GoRoute(
+              path: '/exam-clips/:examId',
+              pageBuilder: (context, state) {
+                final examId = state.pathParameters['examId']!;
+
+                return NoTransitionPage(child: ExamClipsPage(examId: examId));
+              },
             ),
 
             // MONITORING
@@ -260,33 +324,36 @@ class MyApp extends StatelessWidget {
         ),
       ],
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Teacher FOTS',
       theme: ThemeData(
-        scaffoldBackgroundColor: Color.fromARGB(255, 14, 45, 73),
-        canvasColor: Color.fromARGB(255, 14, 45, 73),
+        scaffoldBackgroundColor: const Color.fromARGB(255, 14, 45, 73),
+        canvasColor: const Color.fromARGB(255, 14, 45, 73),
         scrollbarTheme: ScrollbarThemeData(
-          thumbColor: WidgetStateProperty.all(Color.fromARGB(255, 24, 39, 68)),
+          thumbColor: WidgetStateProperty.all(
+            const Color.fromARGB(255, 24, 39, 68),
+          ),
           trackColor: WidgetStateProperty.all(Colors.black12),
           trackBorderColor: WidgetStateProperty.all(Colors.transparent),
           radius: const Radius.circular(8),
           thickness: WidgetStateProperty.all(8),
         ),
-
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
-          surface: Color.fromARGB(255, 14, 45, 73),
+          surface: const Color.fromARGB(255, 14, 45, 73),
         ),
       ),
-
-      routerConfig: router,
+      routerConfig: _router,
     );
   }
 }
 
-// AUTH LISTENER (no changes needed)
+// AUTH LISTENER
 
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {

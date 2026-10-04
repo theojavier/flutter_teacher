@@ -22,7 +22,7 @@ class AppRoutes {
   // --------------------------------------
   static Map<String, WidgetBuilder> routes = {
     // LOGIN
-    login: (context) => const LoginPage(),
+    login: (context) => const TeacherLoginPage(),
 
     // FORGOT PASSWORD
     forgot: (context) => const ForgotPage(),
