@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -6,16 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../helpers/AppTheme.dart';
+import '../../widgets/app_dialog.dart';
 
 class EditExamPage extends StatefulWidget {
   final String? docId;
   final Map<String, dynamic>? existing;
 
-  const EditExamPage({
-    super.key,
-    this.docId,
-    this.existing,
-  });
+  const EditExamPage({super.key, this.docId, this.existing});
 
   @override
   State<EditExamPage> createState() => _EditExamPageState();
@@ -26,60 +22,89 @@ class _EditExamPageState extends State<EditExamPage> {
   final _db = FirebaseFirestore.instance;
 
   bool _isSaving = false;
+  bool _isLoadingTeacherProfile = true;
 
-  final _programController = TextEditingController();
   final _subjectController = TextEditingController();
   final _yearBlockController = TextEditingController();
   final _creatorController = TextEditingController();
+  List<String> _programs = [];
+  String? _selectedProgram;
 
   DateTime? _startTime;
   DateTime? _endTime;
 
   String? _teacherId;
-  String _statusValue = 'ongoing';
+  String _statusValue = 'upcoming';
+  bool _isPc = true;
 
   @override
   void initState() {
     super.initState();
 
+    _loadTeacherProfile();
+
     if (widget.docId != null) {
       _loadExam(widget.docId!);
     } else if (widget.existing != null) {
       _setControllers(widget.existing!);
-    } else {
-      _loadTeacherId();
     }
   }
 
   // ============================================================
-  // LOAD TEACHER ID
+  // LOAD TEACHER PROFILE
   // ============================================================
 
-  Future<void> _loadTeacherId() async {
+  Future<void> _loadTeacherProfile() async {
     final currentUser = FirebaseAuth.instance.currentUser;
 
-    if (currentUser == null) return;
-
     try {
-      final doc = await _db
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
+      if (currentUser == null) {
+        throw StateError('No signed-in teacher was found.');
+      }
+
+      final doc = await _db.collection('users').doc(currentUser.uid).get();
+      if (!doc.exists) {
+        throw StateError('The signed-in teacher profile could not be found.');
+      }
+      final data = doc.data()!;
+      final rawPrograms = data['programs'];
+      final programs = rawPrograms is List
+          ? rawPrograms
+                .map((program) => program.toString().trim())
+                .where((program) => program.isNotEmpty)
+                .toSet()
+                .toList()
+          : <String>[];
+      final name =
+          (data['name'] ??
+                  data['fullName'] ??
+                  data['displayName'] ??
+                  currentUser.displayName ??
+                  '')
+              .toString()
+              .trim();
 
       if (!mounted) return;
 
-      if (doc.exists) {
-        setState(() {
-          _teacherId = doc.data()?['ID']?.toString();
-        });
-      }
+      setState(() {
+        _teacherId = data['ID']?.toString();
+        _programs = programs;
+        _selectedProgram = programs.contains(_selectedProgram)
+            ? _selectedProgram
+            : (programs.isEmpty ? null : programs.first);
+        _yearBlockController.text = (data['yearBlock'] ?? '').toString();
+        _creatorController.text = name;
+        _isLoadingTeacherProfile = false;
+      });
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to load teacher information: $e'),
-        ),
+      setState(() => _isLoadingTeacherProfile = false);
+      await AppDialog.alert(
+        context,
+        title: 'Unable to load teacher information',
+        message: '$e',
+        tone: AppTone.error,
       );
     }
   }
@@ -90,10 +115,7 @@ class _EditExamPageState extends State<EditExamPage> {
 
   Future<void> _loadExam(String id) async {
     try {
-      final doc = await _db
-          .collection('exams')
-          .doc(id)
-          .get();
+      final doc = await _db.collection('exams').doc(id).get();
 
       if (!mounted) return;
 
@@ -103,10 +125,11 @@ class _EditExamPageState extends State<EditExamPage> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to load exam: $e'),
-        ),
+      await AppDialog.alert(
+        context,
+        title: 'Unable to load exam',
+        message: '$e',
+        tone: AppTone.error,
       );
     }
   }
@@ -116,32 +139,21 @@ class _EditExamPageState extends State<EditExamPage> {
   // ============================================================
 
   void _setControllers(Map<String, dynamic> data) {
-    final statusValue =
-        (data['status'] ?? 'ongoing').toString().toLowerCase();
+    final statusValue = (data['status'] ?? 'upcoming').toString().toLowerCase();
 
     setState(() {
-      _programController.text =
-          (data['program'] ?? '').toString();
+      final examProgram = (data['program'] ?? '').toString();
+      _selectedProgram = examProgram.isEmpty ? null : examProgram;
 
-      _subjectController.text =
-          (data['subject'] ?? '').toString();
-
-      _yearBlockController.text =
-          (data['yearBlock'] ?? '').toString();
-
-      _creatorController.text =
-          (data['creator'] ?? '').toString();
-
-      _teacherId =
-          data['teacherId']?.toString();
+      _subjectController.text = (data['subject'] ?? '').toString();
+      _isPc = data['isPc'] is bool ? data['isPc'] as bool : true;
 
       _statusValue =
-          statusValue == 'finished' ||
-                  statusValue == 'finish' ||
-                  statusValue == 'completed' ||
-                  statusValue == 'complete'
-              ? 'finished'
-              : 'ongoing';
+          ['finished', 'finish', 'completed', 'complete'].contains(statusValue)
+          ? 'finished'
+          : ['ongoing', 'on-going', 'on going'].contains(statusValue)
+          ? 'ongoing'
+          : 'upcoming';
 
       final start = data['startTime'];
       final end = data['endTime'];
@@ -162,7 +174,6 @@ class _EditExamPageState extends State<EditExamPage> {
 
   @override
   void dispose() {
-    _programController.dispose();
     _subjectController.dispose();
     _yearBlockController.dispose();
     _creatorController.dispose();
@@ -177,22 +188,28 @@ class _EditExamPageState extends State<EditExamPage> {
   Future<void> _pickDateTime(bool isStart) async {
     final current = isStart ? _startTime : _endTime;
 
-    final date = await showDatePicker(
-      context: context,
-      initialDate: current ?? DateTime.now(),
-      firstDate: DateTime(2024),
-      lastDate: DateTime(2100),
-      builder: _pickerBuilder,
+    final date = await AppDialog.custom<DateTime>(
+      context,
+      builder: (dialogContext) => _pickerBuilder(
+        dialogContext,
+        DatePickerDialog(
+          initialDate: current ?? DateTime.now(),
+          firstDate: DateTime(2024),
+          lastDate: DateTime(2100),
+        ),
+      ),
     );
 
     if (!mounted || date == null) return;
 
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        current ?? DateTime.now(),
+    final time = await AppDialog.custom<TimeOfDay>(
+      context,
+      builder: (dialogContext) => _pickerBuilder(
+        dialogContext,
+        TimePickerDialog(
+          initialTime: TimeOfDay.fromDateTime(current ?? DateTime.now()),
+        ),
       ),
-      builder: _pickerBuilder,
     );
 
     if (!mounted || time == null) return;
@@ -218,10 +235,7 @@ class _EditExamPageState extends State<EditExamPage> {
   // DATE / TIME PICKER THEME
   // ============================================================
 
-  Widget _pickerBuilder(
-    BuildContext context,
-    Widget? child,
-  ) {
+  Widget _pickerBuilder(BuildContext context, Widget? child) {
     return Theme(
       data: Theme.of(context).copyWith(
         colorScheme: ColorScheme.dark(
@@ -240,49 +254,50 @@ class _EditExamPageState extends State<EditExamPage> {
   // ============================================================
 
   Future<void> _saveExam() async {
+    if (_isLoadingTeacherProfile) {
+      await AppDialog.alert(
+        context,
+        title: 'Teacher profile is loading',
+        message: 'Please wait until your teacher profile has finished loading.',
+        tone: AppTone.warning,
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (_startTime == null || _endTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please select start and end time',
-          ),
-        ),
+      await AppDialog.alert(
+        context,
+        title: 'Exam time required',
+        message: 'Please select start and end time',
+        tone: AppTone.warning,
       );
 
       return;
     }
 
     if (!_endTime!.isAfter(_startTime!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'End time must be after start time',
-          ),
-        ),
+      await AppDialog.alert(
+        context,
+        title: 'Invalid exam time',
+        message: 'End time must be after start time',
+        tone: AppTone.warning,
       );
 
       return;
     }
 
-    // If teacher ID was loaded from an existing exam,
-    // use that. Otherwise load the current teacher ID.
-    if (_teacherId == null || _teacherId!.trim().isEmpty) {
-      await _loadTeacherId();
-    }
-
     if (_teacherId == null || _teacherId!.trim().isEmpty) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Teacher ID is required',
-          ),
-        ),
+      await AppDialog.alert(
+        context,
+        title: 'Teacher ID required',
+        message: 'Teacher ID is required to save this exam.',
+        tone: AppTone.warning,
       );
 
       return;
@@ -293,11 +308,12 @@ class _EditExamPageState extends State<EditExamPage> {
     });
 
     final data = {
-      'program': _programController.text.trim(),
+      'program': _selectedProgram!.trim(),
       'subject': _subjectController.text.trim(),
       'yearBlock': _yearBlockController.text.trim(),
       'creator': _creatorController.text.trim(),
       'status': _statusValue,
+      'isPc': _isPc,
       'teacherId': _teacherId!.trim(),
       'startTime': Timestamp.fromDate(_startTime!),
       'endTime': Timestamp.fromDate(_endTime!),
@@ -320,77 +336,58 @@ class _EditExamPageState extends State<EditExamPage> {
         examId = docRef.id;
 
         // Create / update examResults
-        await _db
-            .collection('examResults')
-            .doc(examId)
-            .set(
-          {
-            'teacherId': _teacherId!.trim(),
-            'examId': examId,
-            'yearBlock': _yearBlockController.text.trim(),
-            'program': _programController.text.trim(),
-          },
-          SetOptions(merge: true),
-        );
+        await _db.collection('examResults').doc(examId).set({
+          'teacherId': _teacherId!.trim(),
+          'examId': examId,
+          'yearBlock': _yearBlockController.text.trim(),
+          'program': _selectedProgram!.trim(),
+        }, SetOptions(merge: true));
 
         if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Exam saved successfully!',
-            ),
-          ),
+        await AppDialog.alert(
+          context,
+          title: 'Exam created',
+          message: 'Exam saved successfully!',
+          tone: AppTone.success,
         );
 
-        context.go('/Exams');
+        if (!mounted) return;
+        context.go('/teacher-exams');
       }
-
       // ========================================================
       // UPDATE EXISTING EXAM
       // ========================================================
-
       else {
         examId = widget.docId!;
 
-        await _db
-            .collection('exams')
-            .doc(examId)
-            .update(data);
+        await _db.collection('exams').doc(examId).update(data);
 
         // Update examResults
-        await _db
-            .collection('examResults')
-            .doc(examId)
-            .set(
-          {
-            'teacherId': _teacherId!.trim(),
-            'examId': examId,
-            'yearBlock': _yearBlockController.text.trim(),
-            'program': _programController.text.trim(),
-          },
-          SetOptions(merge: true),
-        );
+        await _db.collection('examResults').doc(examId).set({
+          'teacherId': _teacherId!.trim(),
+          'examId': examId,
+          'yearBlock': _yearBlockController.text.trim(),
+          'program': _selectedProgram!.trim(),
+        }, SetOptions(merge: true));
 
         if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Exam updated successfully!',
-            ),
-          ),
+        await AppDialog.alert(
+          context,
+          title: 'Exam updated',
+          message: 'Exam updated successfully!',
+          tone: AppTone.success,
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: $e',
-          ),
-        ),
+      await AppDialog.alert(
+        context,
+        title: 'Unable to save exam',
+        message: '$e',
+        tone: AppTone.error,
       );
     } finally {
       if (!mounted) return;
@@ -410,9 +407,7 @@ class _EditExamPageState extends State<EditExamPage> {
       return 'Select date/time';
     }
 
-    return DateFormat(
-      'MMM d, yyyy – hh:mm a',
-    ).format(dt);
+    return DateFormat('MMM d, yyyy – hh:mm a').format(dt);
   }
 
   // ============================================================
@@ -429,7 +424,6 @@ class _EditExamPageState extends State<EditExamPage> {
       // ========================================================
       // APP BAR
       // ========================================================
-
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 80,
@@ -442,19 +436,14 @@ class _EditExamPageState extends State<EditExamPage> {
         title: Row(
           children: [
             AppTheme.appBarIcon(
-              isEditing
-                  ? Icons.edit_note
-                  : Icons.add_circle_outline,
+              isEditing ? Icons.edit_note : Icons.add_circle_outline,
             ),
 
             const SizedBox(width: 12),
 
             Text(
               isEditing ? 'Edit Exam' : 'Add Exam',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -463,12 +452,9 @@ class _EditExamPageState extends State<EditExamPage> {
       // ========================================================
       // BODY
       // ========================================================
-
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 640,
-          ),
+          constraints: const BoxConstraints(maxWidth: 640),
 
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -477,21 +463,18 @@ class _EditExamPageState extends State<EditExamPage> {
               key: _formKey,
 
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
 
                 children: [
                   // ==================================================
                   // EXAM DETAILS CARD
                   // ==================================================
-
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: AppTheme.cardDecoration(),
 
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
                         AppTheme.sectionHeader(
@@ -499,11 +482,7 @@ class _EditExamPageState extends State<EditExamPage> {
                           'Exam Details',
                         ),
 
-                        _field(
-                          _programController,
-                          'Program',
-                          Icons.school_outlined,
-                        ),
+                        _programDropdown(),
 
                         _field(
                           _subjectController,
@@ -511,22 +490,24 @@ class _EditExamPageState extends State<EditExamPage> {
                           Icons.menu_book_outlined,
                         ),
 
-                        _field(
+                        _readOnlyField(
                           _yearBlockController,
                           'Year/Block',
                           Icons.groups_outlined,
+                          emptyMessage:
+                              'Year/block is missing from your profile.',
                         ),
 
-                        _field(
+                        _readOnlyField(
                           _creatorController,
                           'Creator (Teacher)',
                           Icons.person_outline,
+                          emptyMessage: 'Name is missing from your profile.',
                         ),
 
                         // ==========================================
                         // STATUS
                         // ==========================================
-
                         DropdownButtonFormField<String>(
                           key: ValueKey(_statusValue),
 
@@ -534,20 +515,20 @@ class _EditExamPageState extends State<EditExamPage> {
 
                           dropdownColor: AppTheme.header,
 
-                          iconEnabledColor:
-                              AppTheme.mutedText,
+                          iconEnabledColor: AppTheme.mutedText,
 
-                          style: TextStyle(
-                            color: AppTheme.text,
-                          ),
+                          style: TextStyle(color: AppTheme.text),
 
-                          decoration:
-                              AppTheme.inputDecoration(
+                          decoration: AppTheme.inputDecoration(
                             'Status',
                             icon: Icons.flag_outlined,
                           ),
 
                           items: const [
+                            DropdownMenuItem(
+                              value: 'upcoming',
+                              child: Text('Upcoming'),
+                            ),
                             DropdownMenuItem(
                               value: 'ongoing',
                               child: Text('On-going'),
@@ -567,6 +548,43 @@ class _EditExamPageState extends State<EditExamPage> {
                             }
                           },
                         ),
+
+                        const SizedBox(height: 14),
+
+                        Material(
+                          color: Colors.black.withOpacity(0.22),
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.06),
+                            ),
+                          ),
+                          child: SwitchListTile(
+                            value: _isPc,
+                            activeColor: AppTheme.accent,
+                            onChanged: (value) {
+                              setState(() {
+                                _isPc = value;
+                              });
+                            },
+                            secondary: Icon(
+                              _isPc
+                                  ? Icons.desktop_windows_outlined
+                                  : Icons.smartphone_outlined,
+                              color: AppTheme.mutedText,
+                            ),
+                            title: Text(
+                              _isPc
+                                  ? 'PC (screen recording on)'
+                                  : 'Mobile (no screen recording)',
+                              style: TextStyle(
+                                color: AppTheme.text,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -576,20 +594,15 @@ class _EditExamPageState extends State<EditExamPage> {
                   // ==================================================
                   // SCHEDULE CARD
                   // ==================================================
-
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: AppTheme.cardDecoration(),
 
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        AppTheme.sectionHeader(
-                          Icons.schedule,
-                          'Schedule',
-                        ),
+                        AppTheme.sectionHeader(Icons.schedule, 'Schedule'),
 
                         _dateTimePicker(
                           'Start Time',
@@ -613,7 +626,6 @@ class _EditExamPageState extends State<EditExamPage> {
                   // ==================================================
                   // SAVE / CANCEL
                   // ==================================================
-
                   Row(
                     children: [
                       // CANCEL
@@ -626,12 +638,10 @@ class _EditExamPageState extends State<EditExamPage> {
                               : () {
                                   if (!mounted) return;
 
-                                  context.go('/Exams');
+                                  context.go('/teacher-exams');
                                 },
 
-                          child: const Text(
-                            'Cancel',
-                          ),
+                          child: const Text('Cancel'),
                         ),
                       ),
 
@@ -644,29 +654,20 @@ class _EditExamPageState extends State<EditExamPage> {
                         child: ElevatedButton.icon(
                           style: AppTheme.primaryButton(),
 
-                          onPressed:
-                              _isSaving ? null : _saveExam,
+                          onPressed: _isSaving ? null : _saveExam,
 
                           icon: _isSaving
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
 
-                                  child:
-                                      CircularProgressIndicator(
+                                  child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(
-                                  Icons.save_outlined,
-                                  size: 18,
-                                ),
+                              : const Icon(Icons.save_outlined, size: 18),
 
-                          label: Text(
-                            _isSaving
-                                ? 'Saving...'
-                                : 'Save',
-                          ),
+                          label: Text(_isSaving ? 'Saving...' : 'Save'),
                         ),
                       ),
                     ],
@@ -677,53 +678,35 @@ class _EditExamPageState extends State<EditExamPage> {
                   // ==================================================
                   // EDIT QUESTIONS
                   // ==================================================
-
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.text,
 
-                      side: BorderSide(
-                        color: AppTheme.accent.withOpacity(
-                          0.6,
-                        ),
-                      ),
+                      side: BorderSide(color: AppTheme.accent.withOpacity(0.6)),
 
-                      padding:
-                          const EdgeInsets.symmetric(
-                        vertical: 14,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
 
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
 
-                    icon: const Icon(
-                      Icons.edit_note,
-                    ),
+                    icon: const Icon(Icons.edit_note),
 
-                    label: const Text(
-                      'Edit Exam Questions',
-                    ),
+                    label: const Text('Edit Exam Questions'),
 
-                    onPressed: () {
+                    onPressed: () async {
                       if (widget.docId != null) {
-                        context.go(
-                          '/edit-question/${widget.docId}',
-                        );
+                        context.go('/edit-question/${widget.docId}');
                       } else {
                         if (!mounted) return;
 
-                        ScaffoldMessenger.of(
+                        await AppDialog.alert(
                           context,
-                        ).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Must Save First!',
-                            ),
-                          ),
+                          title: 'Save the exam first',
+                          message:
+                              'Create the exam before adding or editing questions.',
+                          tone: AppTone.warning,
                         );
                       }
                     },
@@ -743,37 +726,93 @@ class _EditExamPageState extends State<EditExamPage> {
   // TEXT FIELD
   // ============================================================
 
-  Widget _field(
-    TextEditingController controller,
-    String label,
-    IconData icon,
-  ) {
+  Widget _programDropdown() {
+    final selectedProgram = _programs.contains(_selectedProgram)
+        ? _selectedProgram
+        : null;
+
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 14,
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DropdownButtonFormField<String>(
+        key: ValueKey(selectedProgram),
+        initialValue: selectedProgram,
+        isExpanded: true,
+        dropdownColor: AppTheme.header,
+        iconEnabledColor: AppTheme.mutedText,
+        style: TextStyle(color: AppTheme.text),
+        decoration: AppTheme.inputDecoration(
+          'Program',
+          icon: Icons.school_outlined,
+          helper: _isLoadingTeacherProfile
+              ? 'Loading programs from your teacher profile...'
+              : _programs.isEmpty
+              ? 'No programs are assigned to your teacher profile.'
+              : null,
+        ),
+        items: _programs
+            .map(
+              (program) => DropdownMenuItem(
+                value: program,
+                child: Text(program, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(),
+        onChanged: _isLoadingTeacherProfile || _programs.isEmpty
+            ? null
+            : (program) => setState(() => _selectedProgram = program),
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return _programs.isEmpty
+                ? 'Add a program to your teacher profile first.'
+                : 'Choose a program';
+          }
+          return null;
+        },
       ),
+    );
+  }
+
+  Widget _field(TextEditingController controller, String label, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
 
       child: TextFormField(
         controller: controller,
 
         cursorColor: AppTheme.accent,
 
-        style: TextStyle(
-          color: AppTheme.text,
-        ),
+        style: TextStyle(color: AppTheme.text),
 
-        decoration:
-            AppTheme.inputDecoration(
-          label,
-          icon: icon,
-        ),
+        decoration: AppTheme.inputDecoration(label, icon: icon),
 
         validator: (value) {
-          if (value == null ||
-              value.trim().isEmpty) {
+          if (value == null || value.trim().isEmpty) {
             return 'Enter $label';
           }
 
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _readOnlyField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    String? emptyMessage,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        style: TextStyle(color: AppTheme.text),
+        decoration: AppTheme.inputDecoration(label, icon: icon),
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return emptyMessage ?? 'Enter $label';
+          }
           return null;
         },
       ),
@@ -784,31 +823,20 @@ class _EditExamPageState extends State<EditExamPage> {
   // DATE TIME FIELD
   // ============================================================
 
-  Widget _dateTimePicker(
-    String label,
-    DateTime? dt,
-    VoidCallback onTap,
-  ) {
+  Widget _dateTimePicker(String label, DateTime? dt, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
 
-      borderRadius:
-          BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(12),
 
       child: InputDecorator(
-        decoration:
-            AppTheme.inputDecoration(
-          label,
-          icon: Icons.event_outlined,
-        ),
+        decoration: AppTheme.inputDecoration(label, icon: Icons.event_outlined),
 
         child: Text(
           _formatDateTime(dt),
 
           style: TextStyle(
-            color: dt == null
-                ? AppTheme.mutedText
-                : AppTheme.text,
+            color: dt == null ? AppTheme.mutedText : AppTheme.text,
           ),
         ),
       ),

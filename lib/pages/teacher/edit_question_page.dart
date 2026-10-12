@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../helpers/AppTheme.dart';
+import '../../widgets/app_dialog.dart';
 
 // Shared colors (same navy palette used in the rest of the app)
 const _kText = Color(0xFFE6F0F8);
@@ -73,9 +74,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
         .firstWhere((u) => u != null)
         .then((_) => _loadQuestions())
         .catchError((_) {
-      // fallback: try after a short delay
-      Future.delayed(const Duration(seconds: 1), _loadQuestions);
-    });
+          // fallback: try after a short delay
+          Future.delayed(const Duration(seconds: 1), _loadQuestions);
+        });
   }
 
   // -------------------------------------------------------------------------
@@ -94,9 +95,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     try {
       // Wait for auth if currentUser is null
       var user = FirebaseAuth.instance.currentUser;
-      user ??= await FirebaseAuth.instance
-          .authStateChanges()
-          .firstWhere((u) => u != null);
+      user ??= await FirebaseAuth.instance.authStateChanges().firstWhere(
+        (u) => u != null,
+      );
       await user!.getIdToken(true);
 
       final functions = FirebaseFunctions.instanceFor(
@@ -142,11 +143,13 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   List<_QuestionLocal> _byType(String type) =>
       _questions.where((q) => q.type == type).toList();
 
-  void _snack(String message) {
+  Future<void> _showFeedback(
+    String title,
+    String message, {
+    AppTone tone = AppTone.info,
+  }) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    await AppDialog.alert(context, title: title, message: message, tone: tone);
   }
 
   Future<void> _saveAll() async {
@@ -154,16 +157,28 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     for (final q in _questions) {
       if (q.isMarkedForDelete) continue;
       if (q.questionTextController.text.trim().isEmpty) {
-        _snack('Please fill question text for all questions.');
+        await _showFeedback(
+          'Question text required',
+          'Please fill question text for all questions.',
+          tone: AppTone.warning,
+        );
         return;
       }
       if (q.type == 'multiple-choice' &&
           q.optionControllers.any((c) => c.text.trim().isEmpty)) {
-        _snack('Please fill all options for multiple-choice questions.');
+        await _showFeedback(
+          'Options required',
+          'Please fill all options for multiple-choice questions.',
+          tone: AppTone.warning,
+        );
         return;
       }
       if (q.type == 'matching' && _poolItems(q.poolController.text).isEmpty) {
-        _snack('Matching question pools cannot be empty.');
+        await _showFeedback(
+          'Matching pool required',
+          'Matching question pools cannot be empty.',
+          tone: AppTone.warning,
+        );
         return;
       }
     }
@@ -202,18 +217,38 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
         debugPrint('Save result: ${result.data}');
       }
 
-      _snack('Questions updated successfully.');
-
       // reload to refresh ids and state
       await _loadQuestions();
+      await _showFeedback(
+        'Questions saved',
+        'Questions updated successfully.',
+        tone: AppTone.success,
+      );
     } catch (e) {
-      _snack('Error saving questions: $e');
+      await _showFeedback(
+        'Unable to save questions',
+        'Error saving questions: $e',
+        tone: AppTone.error,
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _toggleMarkForDelete(_QuestionLocal q) {
+  Future<void> _toggleMarkForDelete(_QuestionLocal q) async {
+    if (!q.isMarkedForDelete) {
+      final confirmed = await AppDialog.confirm(
+        context,
+        title: q.docId == null ? 'Remove question?' : 'Delete question?',
+        message: q.docId == null
+            ? 'This unsaved question will be removed from the form.'
+            : 'This question will be permanently deleted when you save changes.',
+        confirmLabel: q.docId == null ? 'Remove' : 'Delete',
+        tone: AppTone.danger,
+      );
+      if (!confirmed || !mounted) return;
+    }
+
     if (q.docId == null) {
       // never saved -> just remove it
       setState(() => _questions.remove(q));
@@ -224,8 +259,8 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   }
 
   Future<void> _showAddQuestionDialog() async {
-    final result = await showDialog<_QuestionLocal>(
-      context: context,
+    final result = await AppDialog.custom<_QuestionLocal>(
+      context,
       builder: (_) => _AddQuestionDialog(),
     );
 
@@ -341,15 +376,12 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   }
 
   Widget _fieldLabel(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: _kText,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(fontWeight: FontWeight.w600, color: _kText),
+    ),
+  );
 
   Widget _buildQuestionCard(_QuestionLocal q, int number) {
     final marked = q.isMarkedForDelete;
@@ -367,8 +399,10 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _kAccent.withOpacity(.15),
                     borderRadius: BorderRadius.circular(10),
@@ -384,8 +418,10 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                 if (q.isNew) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: _kAccent),
@@ -404,8 +440,8 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                 IconButton(
                   tooltip: marked ? 'Undo delete' : 'Delete question',
                   style: IconButton.styleFrom(
-                    backgroundColor:
-                        (marked ? _kAccent : AppTheme.error).withOpacity(.15),
+                    backgroundColor: (marked ? _kAccent : AppTheme.error)
+                        .withOpacity(.15),
                   ),
                   icon: Icon(
                     marked ? Icons.undo : Icons.delete_outline,
@@ -467,8 +503,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
 
   Widget _buildMultipleChoiceFields(_QuestionLocal q, bool disabled) {
     final count = q.optionControllers.length;
-    final correct =
-        (q.correctIndex != null && q.correctIndex! < count) ? q.correctIndex! : 0;
+    final correct = (q.correctIndex != null && q.correctIndex! < count)
+        ? q.correctIndex!
+        : 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,8 +591,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
               child: Text('False', style: TextStyle(color: _kText)),
             ),
           ],
-          onChanged:
-              disabled ? null : (v) => setState(() => q.correctAnswer = v),
+          onChanged: disabled
+              ? null
+              : (v) => setState(() => q.correctAnswer = v),
         ),
       ],
     );
@@ -737,11 +775,11 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-      toolbarHeight: 80,
-      titleSpacing: 16,
-      backgroundColor: AppTheme.header,
-      foregroundColor: AppTheme.text,
-      surfaceTintColor: Colors.transparent,
+        toolbarHeight: 80,
+        titleSpacing: 16,
+        backgroundColor: AppTheme.header,
+        foregroundColor: AppTheme.text,
+        surfaceTintColor: Colors.transparent,
         title: Row(
           children: [
             AppTheme.appBarIcon(Icons.quiz_outlined),
@@ -789,7 +827,7 @@ class _QuestionLocal {
     );
     final optionsRaw =
         (d['options'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-            [];
+        [];
 
     final optionControllers = <TextEditingController>[];
     if (type == 'multiple-choice') {
@@ -825,7 +863,8 @@ class _QuestionLocal {
         correctIndex = 0;
       }
     } else {
-      correctAnswer = d['correctAnswer']?.toString() ??
+      correctAnswer =
+          d['correctAnswer']?.toString() ??
           (type == 'true-false' ? 'True' : null);
     }
 
@@ -876,7 +915,8 @@ class _QuestionLocal {
     } else if (type == 'matching') {
       final pool = _poolItems(poolController.text);
       map['options'] = pool;
-      map['correctAnswer'] = (correctAnswer != null && pool.contains(correctAnswer))
+      map['correctAnswer'] =
+          (correctAnswer != null && pool.contains(correctAnswer))
           ? correctAnswer
           : (pool.isNotEmpty ? pool.first : '');
     }
@@ -904,12 +944,16 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
   String _type = 'multiple-choice';
   late _QuestionLocal _temp;
   bool _handedOff = false; // true once _temp is returned to the page
+  String? _validationMessage;
 
   void _rebuild() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() => _validationMessage = null);
+    }
   }
 
   void _attachListeners() {
+    _temp.questionTextController.addListener(_rebuild);
     _temp.poolController.addListener(_rebuild);
     for (final c in _temp.optionControllers) {
       c.addListener(_rebuild);
@@ -917,6 +961,7 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
   }
 
   void _detachListeners() {
+    _temp.questionTextController.removeListener(_rebuild);
     _temp.poolController.removeListener(_rebuild);
     for (final c in _temp.optionControllers) {
       c.removeListener(_rebuild);
@@ -954,25 +999,19 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
     super.dispose();
   }
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   void _create() {
     if (_temp.questionTextController.text.trim().isEmpty) {
-      _toast('Enter question text');
+      setState(() => _validationMessage = 'Enter question text.');
       return;
     }
     if (_temp.type == 'multiple-choice' &&
         _temp.optionControllers.any((c) => c.text.trim().isEmpty)) {
-      _toast('Fill all multiple-choice options');
+      setState(() => _validationMessage = 'Fill all multiple-choice options.');
       return;
     }
     if (_temp.type == 'matching' &&
         _poolItems(_temp.poolController.text).isEmpty) {
-      _toast('Enter pool items for matching');
+      setState(() => _validationMessage = 'Enter pool items for matching.');
       return;
     }
 
@@ -981,217 +1020,202 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
   }
 
   Widget _label(String text) => Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: _kText),
-      );
+    text,
+    style: const TextStyle(fontWeight: FontWeight.w600, color: _kText),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: _kMenuBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      titleTextStyle: const TextStyle(
-        color: _kText,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-      ),
-      contentTextStyle: const TextStyle(color: _kText),
-      title: Row(
+    return AppDialog.formCard(
+      title: 'Add Question',
+      icon: Icons.add,
+      confirmLabel: 'Create',
+      onCancel: () => Navigator.of(context).pop(),
+      onConfirm: _create,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppTheme.appBarIcon(Icons.add),
-          const SizedBox(width: 12),
-          const Text('Add Question'),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _type,
-              isExpanded: true,
-              decoration: AppTheme.inputDecoration('Type', icon: Icons.category),
-              dropdownColor: _kMenuBg,
-              style: const TextStyle(color: _kText),
-              items: const [
-                DropdownMenuItem(
-                  value: 'multiple-choice',
-                  child: Text('Multiple Choice',
-                      style: TextStyle(color: _kText)),
-                ),
-                DropdownMenuItem(
-                  value: 'true-false',
-                  child: Text('True / False', style: TextStyle(color: _kText)),
-                ),
-                DropdownMenuItem(
-                  value: 'matching',
-                  child: Text('Matching', style: TextStyle(color: _kText)),
-                ),
-              ],
-              onChanged: _onTypeChanged,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _temp.questionTextController,
-              style: const TextStyle(color: _kText),
-              minLines: 1,
-              maxLines: 3,
-              decoration:
-                  AppTheme.inputDecoration('Question', icon: Icons.help_outline),
-            ),
-            const SizedBox(height: 12),
-
-            // ---- multiple choice ----
-            if (_temp.type == 'multiple-choice') ...[
-              ...List.generate(_temp.optionControllers.length, (i) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: TextFormField(
-                    controller: _temp.optionControllers[i],
-                    style: const TextStyle(color: _kText),
-                    decoration: AppTheme.inputDecoration(
-                      'Option ${i + 1}',
-                      icon: Icons.radio_button_unchecked,
-                    ),
-                  ),
-                );
-              }),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  _label('Correct:'),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButton<int>(
-                      isExpanded: true,
-                      dropdownColor: _kMenuBg,
-                      style: const TextStyle(color: _kText),
-                      value: (_temp.correctIndex != null &&
-                              _temp.correctIndex! <
-                                  _temp.optionControllers.length)
-                          ? _temp.correctIndex
-                          : 0,
-                      items: List.generate(_temp.optionControllers.length, (i) {
-                        final text =
-                            _temp.optionControllers[i].text.trim().isEmpty
-                                ? 'Option ${i + 1}'
-                                : _temp.optionControllers[i].text.trim();
-                        return DropdownMenuItem(
-                          value: i,
-                          child: Text(
-                            text,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: _kText),
-                          ),
-                        );
-                      }),
-                      onChanged: (v) =>
-                          setState(() => _temp.correctIndex = v ?? 0),
-                    ),
-                  ),
-                ],
+          DropdownButtonFormField<String>(
+            initialValue: _type,
+            isExpanded: true,
+            decoration: AppTheme.inputDecoration('Type', icon: Icons.category),
+            dropdownColor: _kMenuBg,
+            style: const TextStyle(color: _kText),
+            items: const [
+              DropdownMenuItem(
+                value: 'multiple-choice',
+                child: Text('Multiple Choice', style: TextStyle(color: _kText)),
+              ),
+              DropdownMenuItem(
+                value: 'true-false',
+                child: Text('True / False', style: TextStyle(color: _kText)),
+              ),
+              DropdownMenuItem(
+                value: 'matching',
+                child: Text('Matching', style: TextStyle(color: _kText)),
               ),
             ],
+            onChanged: _onTypeChanged,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _temp.questionTextController,
+            style: const TextStyle(color: _kText),
+            minLines: 1,
+            maxLines: 3,
+            decoration: AppTheme.inputDecoration(
+              'Question',
+              icon: Icons.help_outline,
+            ),
+          ),
+          const SizedBox(height: 12),
 
-            // ---- true / false ----
-            if (_temp.type == 'true-false')
-              Row(
-                children: [
-                  _label('Correct:'),
-                  const SizedBox(width: 12),
-                  DropdownButton<String>(
+          // ---- multiple choice ----
+          if (_temp.type == 'multiple-choice') ...[
+            ...List.generate(_temp.optionControllers.length, (i) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextFormField(
+                  controller: _temp.optionControllers[i],
+                  style: const TextStyle(color: _kText),
+                  decoration: AppTheme.inputDecoration(
+                    'Option ${i + 1}',
+                    icon: Icons.radio_button_unchecked,
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                _label('Correct:'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
                     dropdownColor: _kMenuBg,
                     style: const TextStyle(color: _kText),
-                    value: _temp.correctAnswer ?? 'True',
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'True',
-                        child: Text('True', style: TextStyle(color: _kText)),
-                      ),
-                      DropdownMenuItem(
-                        value: 'False',
-                        child: Text('False', style: TextStyle(color: _kText)),
+                    value:
+                        (_temp.correctIndex != null &&
+                            _temp.correctIndex! <
+                                _temp.optionControllers.length)
+                        ? _temp.correctIndex
+                        : 0,
+                    items: List.generate(_temp.optionControllers.length, (i) {
+                      final text =
+                          _temp.optionControllers[i].text.trim().isEmpty
+                          ? 'Option ${i + 1}'
+                          : _temp.optionControllers[i].text.trim();
+                      return DropdownMenuItem(
+                        value: i,
+                        child: Text(
+                          text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _kText),
+                        ),
+                      );
+                    }),
+                    onChanged: (v) =>
+                        setState(() => _temp.correctIndex = v ?? 0),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // ---- true / false ----
+          if (_temp.type == 'true-false')
+            Row(
+              children: [
+                _label('Correct:'),
+                const SizedBox(width: 12),
+                DropdownButton<String>(
+                  dropdownColor: _kMenuBg,
+                  style: const TextStyle(color: _kText),
+                  value: _temp.correctAnswer ?? 'True',
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'True',
+                      child: Text('True', style: TextStyle(color: _kText)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'False',
+                      child: Text('False', style: TextStyle(color: _kText)),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _temp.correctAnswer = v),
+                ),
+              ],
+            ),
+
+          // ---- matching ----
+          if (_temp.type == 'matching') ...[
+            TextFormField(
+              controller: _temp.poolController,
+              style: const TextStyle(color: _kText),
+              decoration: AppTheme.inputDecoration(
+                'Matching Pool',
+                helper: 'Comma separated values',
+                icon: Icons.list_alt,
+              ),
+            ),
+            Builder(
+              builder: (_) {
+                final pool = _poolItems(_temp.poolController.text);
+                if (pool.isEmpty) return const SizedBox.shrink();
+                if (_temp.correctAnswer == null ||
+                    !pool.contains(_temp.correctAnswer)) {
+                  _temp.correctAnswer = pool.first;
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Row(
+                    children: [
+                      _label('Correct:'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _temp.correctAnswer,
+                          dropdownColor: _kMenuBg,
+                          style: const TextStyle(color: _kText),
+                          items: pool
+                              .map(
+                                (s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(
+                                    s,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: _kText),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _temp.correctAnswer = v),
+                        ),
                       ),
                     ],
-                    onChanged: (v) => setState(() => _temp.correctAnswer = v),
                   ),
-                ],
-              ),
-
-            // ---- matching ----
-            if (_temp.type == 'matching') ...[
-              TextFormField(
-                controller: _temp.poolController,
-                style: const TextStyle(color: _kText),
-                decoration: AppTheme.inputDecoration(
-                  'Matching Pool',
-                  helper: 'Comma separated values',
-                  icon: Icons.list_alt,
-                ),
-              ),
-              Builder(
-                builder: (_) {
-                  final pool = _poolItems(_temp.poolController.text);
-                  if (pool.isEmpty) return const SizedBox.shrink();
-                  if (_temp.correctAnswer == null ||
-                      !pool.contains(_temp.correctAnswer)) {
-                    _temp.correctAnswer = pool.first;
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Row(
-                      children: [
-                        _label('Correct:'),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: _temp.correctAnswer,
-                            dropdownColor: _kMenuBg,
-                            style: const TextStyle(color: _kText),
-                            items: pool
-                                .map(
-                                  (s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(
-                                      s,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: _kText),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => _temp.correctAnswer = v),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
+                );
+              },
+            ),
           ],
-        ),
+          if (_validationMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _validationMessage!,
+              style: TextStyle(
+                color: AppTheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
       ),
-      actions: [
-        TextButton(
-          style: TextButton.styleFrom(foregroundColor: _kAccent),
-          child: const Text('Cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _kAccent,
-            foregroundColor: Colors.white,
-          ),
-          onPressed: _create,
-          child: const Text('Create'),
-        ),
-      ],
     );
   }
 }

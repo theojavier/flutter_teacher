@@ -281,44 +281,6 @@ class ExamMonitoringPage extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          PopupMenuButton<String>(
-            tooltip: 'Student actions',
-            icon: Icon(Icons.more_vert, color: AppTheme.mutedText),
-            color: AppTheme.header,
-            onSelected: (value) {
-              _updateStudentStatus(db, student.id, value);
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'allowed_to_retake',
-                child: Row(
-                  children: [
-                    Icon(Icons.restart_alt, color: AppTheme.accent, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Allow Retake',
-                      style: TextStyle(color: AppTheme.text),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'stopped',
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.stop_circle_outlined,
-                      color: Colors.redAccent,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Text('Stop Exam', style: TextStyle(color: AppTheme.text)),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -433,20 +395,4 @@ class ExamMonitoringPage extends StatelessWidget {
     );
   }
 
-  Future<void> _updateStudentStatus(
-    FirebaseFirestore db,
-    String studentId,
-    String status,
-  ) async {
-    try {
-      await db
-          .collection('exams')
-          .doc(examId)
-          .collection('students')
-          .doc(studentId)
-          .update({'status': status});
-    } catch (e) {
-      debugPrint('Error updating student status: $e');
-    }
-  }
 }

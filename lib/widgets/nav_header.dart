@@ -25,8 +25,7 @@ class NavHeader extends StatefulWidget {
   State<NavHeader> createState() => _NavHeaderState();
 }
 
-class _NavHeaderState extends State<NavHeader>
-    with TickerProviderStateMixin {
+class _NavHeaderState extends State<NavHeader> with TickerProviderStateMixin {
   bool _expanded = false;
 
   static const Color _headerColor = Color(0xFF0F2B45);
@@ -75,10 +74,7 @@ class _NavHeaderState extends State<NavHeader>
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    _headerColorLight,
-                    _headerColor,
-                  ],
+                  colors: [_headerColorLight, _headerColor],
                 ),
               ),
 
@@ -147,7 +143,8 @@ class _NavHeaderState extends State<NavHeader>
               // ======================================================
               currentAccountPicture: CircleAvatar(
                 backgroundColor: _headerColor,
-                child: widget.profileImageUrl != null &&
+                child:
+                    widget.profileImageUrl != null &&
                         widget.profileImageUrl!.isNotEmpty
                     ? ClipOval(
                         child: Image.network(
@@ -165,11 +162,7 @@ class _NavHeaderState extends State<NavHeader>
                           },
                         ),
                       )
-                    : const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Colors.grey,
-                      ),
+                    : const Icon(Icons.person, size: 40, color: Colors.grey),
               ),
 
               onDetailsPressed: _toggle,
@@ -186,12 +179,7 @@ class _NavHeaderState extends State<NavHeader>
           curve: Curves.easeInOut,
           child: _expanded
               ? Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    12,
-                    8,
-                    12,
-                    8,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -205,12 +193,7 @@ class _NavHeaderState extends State<NavHeader>
                           child: CustomPaint(
                             size: const Size(18, 10),
                             painter: const _TrianglePainter(
-                              color: Color.fromARGB(
-                                255,
-                                19,
-                                54,
-                                87,
-                              ),
+                              color: Color.fromARGB(255, 19, 54, 87),
                             ),
                           ),
                         ),
@@ -222,12 +205,7 @@ class _NavHeaderState extends State<NavHeader>
                       Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(
-                            255,
-                            19,
-                            54,
-                            87,
-                          ),
+                          color: const Color.fromARGB(255, 19, 54, 87),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.08),
@@ -274,10 +252,7 @@ class _NavHeaderState extends State<NavHeader>
       splashColor: _accentColor.withOpacity(0.12),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -330,9 +305,7 @@ class _NavHeaderState extends State<NavHeader>
 class _TrianglePainter extends CustomPainter {
   final Color color;
 
-  const _TrianglePainter({
-    required this.color,
-  });
+  const _TrianglePainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -348,9 +321,7 @@ class _TrianglePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(
-    covariant _TrianglePainter oldDelegate,
-  ) {
+  bool shouldRepaint(covariant _TrianglePainter oldDelegate) {
     return oldDelegate.color != color;
   }
 }

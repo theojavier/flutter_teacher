@@ -17,26 +17,25 @@ class AppTheme {
   // ---------- OPTIONAL: full Material ThemeData ----------
   /// Use in MaterialApp: theme: AppTheme.themeData
   static ThemeData get themeData => ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: bg,
-        colorScheme: const ColorScheme.dark(
-          primary: accent,
-          secondary: accent,
-          surface: card,
-          error: error,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: header,
-          foregroundColor: text,
-          elevation: 0,
-        ),
-        progressIndicatorTheme:
-            const ProgressIndicatorThemeData(color: accent),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: text),
-          bodyLarge: TextStyle(color: text),
-        ),
-      );
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: bg,
+    colorScheme: const ColorScheme.dark(
+      primary: accent,
+      secondary: accent,
+      surface: card,
+      error: error,
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: header,
+      foregroundColor: text,
+      elevation: 0,
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: accent),
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(color: text),
+      bodyLarge: TextStyle(color: text),
+    ),
+  );
 
   // ---------- DECORATIONS ----------
 
@@ -131,58 +130,59 @@ class AppTheme {
       ),
     );
   }
+
   /// Themed text field decoration (used by all form pages)
-static InputDecoration inputDecoration(
-  String label, {
-  String? helper,
-  IconData? icon,
-}) {
-  OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: c, width: w),
-      );
+  static InputDecoration inputDecoration(
+    String label, {
+    String? helper,
+    IconData? icon,
+  }) {
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: c, width: w),
+    );
 
-  return InputDecoration(
-    filled: true,
-    fillColor: Colors.black.withOpacity(0.22),
-    labelText: label,
-    helperText: helper,
-    helperStyle: const TextStyle(color: mutedText),
-    labelStyle: const TextStyle(color: mutedText),
-    floatingLabelStyle: const TextStyle(color: accent),
-    errorStyle: const TextStyle(color: error),
-    prefixIcon: icon == null ? null : Icon(icon, color: mutedText, size: 20),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    border: border(Colors.white.withOpacity(0.12)),
-    enabledBorder: border(Colors.white.withOpacity(0.12)),
-    focusedBorder: border(accent, 1.5),
-    errorBorder: border(error),
-    focusedErrorBorder: border(error, 1.5),
-  );
-}
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.black.withOpacity(0.22),
+      labelText: label,
+      helperText: helper,
+      helperStyle: const TextStyle(color: mutedText),
+      labelStyle: const TextStyle(color: mutedText),
+      floatingLabelStyle: const TextStyle(color: accent),
+      errorStyle: const TextStyle(color: error),
+      prefixIcon: icon == null ? null : Icon(icon, color: mutedText, size: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: border(Colors.white.withOpacity(0.12)),
+      enabledBorder: border(Colors.white.withOpacity(0.12)),
+      focusedBorder: border(accent, 1.5),
+      errorBorder: border(error),
+      focusedErrorBorder: border(error, 1.5),
+    );
+  }
 
-static ButtonStyle primaryButton({
-  Color color = accent,
-  Color foreground = Colors.white,
-}) {
-  return ElevatedButton.styleFrom(
-    backgroundColor: color,
-    foregroundColor: foreground,
-    disabledBackgroundColor: color.withOpacity(0.4),
-    elevation: 0,
-    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    textStyle: const TextStyle(fontWeight: FontWeight.bold),
-  );
-}
+  static ButtonStyle primaryButton({
+    Color color = accent,
+    Color foreground = Colors.white,
+  }) {
+    return ElevatedButton.styleFrom(
+      backgroundColor: color,
+      foregroundColor: foreground,
+      disabledBackgroundColor: color.withOpacity(0.4),
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+    );
+  }
 
-static ButtonStyle ghostButton() {
-  return TextButton.styleFrom(
-    foregroundColor: mutedText,
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  );
-}
+  static ButtonStyle ghostButton() {
+    return TextButton.styleFrom(
+      foregroundColor: mutedText,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
 
   // ---------- WIDGETS ----------
 
@@ -332,8 +332,9 @@ static ButtonStyle ghostButton() {
               ),
               children: [
                 TableRow(
-                  decoration:
-                      BoxDecoration(color: Colors.black.withOpacity(0.22)),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.22),
+                  ),
                   children: [
                     for (final h in headers)
                       tableCell(h, weight: FontWeight.bold),
@@ -360,8 +361,9 @@ static ButtonStyle ghostButton() {
   static Widget statusChip(String status, {String successValue = "completed"}) {
     final ok = status == successValue;
     final color = ok ? success : error;
-    final label =
-        status.isEmpty ? "—" : status[0].toUpperCase() + status.substring(1);
+    final label = status.isEmpty
+        ? "—"
+        : status[0].toUpperCase() + status.substring(1);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
@@ -409,8 +411,9 @@ static ButtonStyle ghostButton() {
   /// Hide scrollbars/overscroll glow (wrap your scroll view with this)
   static Widget noScrollbars(BuildContext context, {required Widget child}) {
     return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context)
-          .copyWith(scrollbars: false, overscroll: false),
+      behavior: ScrollConfiguration.of(
+        context,
+      ).copyWith(scrollbars: false, overscroll: false),
       child: child,
     );
   }
@@ -444,4 +447,4 @@ static ButtonStyle ghostButton() {
       ),
     );
   }
-}   
+}

@@ -59,11 +59,13 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
     });
 
     try {
-      final functions = FirebaseFunctions.instanceFor(region: 'asia-southeast1');
+      final functions = FirebaseFunctions.instanceFor(
+        region: 'asia-southeast1',
+      );
 
-      final result = await functions
-          .httpsCallable('loginWithTeacherId')
-          .call({'teacherId': teacherId});
+      final result = await functions.httpsCallable('loginWithTeacherId').call({
+        'teacherId': teacherId,
+      });
 
       final data = result.data as Map<String, dynamic>?;
 
@@ -95,21 +97,50 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
       await prefs.setString('userId', user.uid);
       await prefs.setString('teacherId', teacherId);
       await prefs.setString('email', email);
-      if (data.containsKey('name')) await prefs.setString('name', data['name'] ?? '');
-      if (data.containsKey('major')) await prefs.setString('major', data['major'] ?? '');
-      if (data.containsKey('yearBlock')) await prefs.setString('yearBlock', data['yearBlock'] ?? '');
+      if (data.containsKey('name'))
+        await prefs.setString('name', data['name'] ?? '');
+      if (data.containsKey('major'))
+        await prefs.setString('major', data['major'] ?? '');
+      if (data.containsKey('yearBlock'))
+        await prefs.setString('yearBlock', data['yearBlock'] ?? '');
 
       // Optional: update lastLogin
-      await _db.collection('users').doc(user.uid).update({'lastLogin': FieldValue.serverTimestamp()});
+      await _db.collection('users').doc(user.uid).update({
+        'lastLogin': FieldValue.serverTimestamp(),
+      });
 
       if (!mounted) return;
       context.go('/teacher-dashboard', extra: {'userId': user.uid});
     } on FirebaseFunctionsException catch (e) {
-      setState(() => _loginError = e.message ?? "Login failed");
+      debugPrint('Teacher login lookup failed: ${e.code}');
+      setState(() {
+        _loginError = switch (e.code) {
+          'unavailable' || 'deadline-exceeded' =>
+            'The sign-in service is temporarily unavailable. Please try again.',
+          'permission-denied' =>
+            'This account does not have permission to sign in as a teacher.',
+          _ => 'Incorrect Teacher ID or Password.',
+        };
+      });
     } on FirebaseAuthException catch (e) {
-      setState(() => _loginError = e.message ?? "Invalid credentials");
+      debugPrint('Teacher authentication failed: ${e.code}');
+      setState(() {
+        _loginError = switch (e.code) {
+          'user-not-found' ||
+          'wrong-password' ||
+          'invalid-credential' => 'Teacher ID or password is incorrect.',
+          'too-many-requests' =>
+            'Too many sign-in attempts. Please wait a moment and try again.',
+          'network-request-failed' =>
+            'Could not connect. Check your internet connection and try again.',
+          _ => 'Unable to sign in. Please check your details and try again.',
+        };
+      });
     } catch (e) {
-      setState(() => _loginError = e.toString());
+      debugPrint('Teacher login failed: ${e.runtimeType}');
+      setState(() {
+        _loginError = 'Unable to sign in right now. Please try again.';
+      });
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -127,7 +158,9 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isFormFilled = teacherIdController.text.trim().isNotEmpty && passwordController.text.trim().isNotEmpty;
+    final isFormFilled =
+        teacherIdController.text.trim().isNotEmpty &&
+        passwordController.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: _bgColor,
@@ -231,7 +264,10 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
               child: Container(
                 color: _cardColor,
                 padding: const EdgeInsets.all(10),
-                child: Image.asset("assets/images/fots_teacher.png", fit: BoxFit.contain),
+                child: Image.asset(
+                  "assets/images/fots_teacher.png",
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
@@ -283,7 +319,11 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
                   color: _accentColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.school_outlined, size: 16, color: _accentColor),
+                child: const Icon(
+                  Icons.school_outlined,
+                  size: 16,
+                  color: _accentColor,
+                ),
               ),
               const SizedBox(width: 10),
               const Text(
@@ -345,11 +385,14 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
               icon: Icons.lock_outline,
               suffix: IconButton(
                 icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _isPasswordVisible
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
                   color: _mutedTextColor,
                   size: 20,
                 ),
-                onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
           ),
@@ -439,7 +482,10 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
                 const SizedBox(height: 2),
                 Text(
                   _loginError,
-                  style: const TextStyle(color: _mutedTextColor, fontSize: 12.5),
+                  style: const TextStyle(
+                    color: _mutedTextColor,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),

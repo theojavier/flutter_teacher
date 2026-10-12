@@ -57,9 +57,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (_loading) {
       return const Scaffold(
         backgroundColor: _bgColor,
-        body: Center(
-          child: CircularProgressIndicator(color: _accentColor),
-        ),
+        body: Center(child: CircularProgressIndicator(color: _accentColor)),
       );
     }
 
@@ -67,10 +65,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return const Scaffold(
         backgroundColor: _bgColor,
         body: Center(
-          child: Text(
-            "Profile not found",
-            style: TextStyle(color: _textColor),
-          ),
+          child: Text("Profile not found", style: TextStyle(color: _textColor)),
         ),
       );
     }
@@ -126,13 +121,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       rows: [
                         _DetailRow(Icons.person_outline, "Name", data["name"]),
                         _DetailRow(Icons.wc, "Gender", data["gender"]),
-                        _DetailRow(Icons.favorite_border, "Civil Status",
-                            data["civilStatus"]),
-                        _DetailRow(Icons.flag_outlined, "Nationality",
-                            data["nationality"]),
                         _DetailRow(
-                            Icons.cake_outlined, "Date of Birth", data["dob"]),
-                        _DetailRow(Icons.email_outlined, "Email", data["email"]),
+                          Icons.favorite_border,
+                          "Civil Status",
+                          data["civilStatus"],
+                        ),
+                        _DetailRow(
+                          Icons.flag_outlined,
+                          "Nationality",
+                          data["nationality"],
+                        ),
+                        _DetailRow(
+                          Icons.cake_outlined,
+                          "Date of Birth",
+                          data["dob"],
+                        ),
+                        _DetailRow(
+                          Icons.email_outlined,
+                          "Email",
+                          data["email"],
+                        ),
                       ],
                     ),
                   ],
@@ -150,16 +158,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
               headerIcon: Icons.school_outlined,
               rows: [
                 _DetailRow(Icons.badge_outlined, "Teacher ID", data["ID"]),
-                _DetailRow(Icons.confirmation_number_outlined, "ID Number",
-                    data["id number"]),
+                _DetailRow(
+                  Icons.confirmation_number_outlined,
+                  "ID Number",
+                  data["id number"],
+                ),
                 _DetailRow(Icons.menu_book_outlined, "Major", data["major"]),
                 _DetailRow(Icons.layers_outlined, "Programs", programs),
                 _DetailRow(Icons.security_outlined, "Role", data["role"]),
                 _DetailRow(
-                    Icons.groups_outlined, "Year / Block", data["yearBlock"]),
+                  Icons.groups_outlined,
+                  "Year / Block",
+                  data["yearBlock"],
+                ),
               ],
             ),
-
           ],
         ),
       ),
@@ -270,8 +283,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 5),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(6),
@@ -374,8 +386,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             thickness: 1.5,
             blur: 12,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: _cardColor,
                 borderRadius: BorderRadius.circular(28.5),
@@ -421,10 +432,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Container(
-            height: 1,
-            color: Colors.white.withOpacity(0.08),
-          ),
+          child: Container(height: 1, color: Colors.white.withOpacity(0.08)),
         ),
       ],
     );
@@ -470,10 +478,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            _cardColor.withOpacity(0.9),
-            _cardColor.withOpacity(0.55),
-          ],
+          colors: [_cardColor.withOpacity(0.9), _cardColor.withOpacity(0.55)],
         ),
         border: Border.all(color: Colors.white.withOpacity(0.06)),
         boxShadow: [

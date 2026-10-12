@@ -34,6 +34,8 @@ class ResponsiveScaffold extends StatefulWidget {
 }
 
 class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
+  static const bool _showMonitoringMenu = false;
+
   String? profileImageUrl;
   String headerName = "Loading...";
   String headerSection = "";
@@ -235,10 +237,11 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
     if (path.startsWith('/teacher-dashboard')) return 0;
     if (path.startsWith('/teacher-exams') ||
-        path.startsWith('/edit-exam') ||
-        path.startsWith('/edit-question')) {
-      return 1;
-    }
+    path.startsWith('/edit-exam') ||
+    path.startsWith('/edit-question') ||
+    path.startsWith('/exam-clips')) {
+  return 1;
+}
     if (path.startsWith('/teacher-monitoring') ||
         path.startsWith('/exam-monitoring')) {
       return 2;
@@ -381,10 +384,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
   List<Widget> _menuTiles() => [
     _menuTile(Icons.home, 'Dashboard', 0),
-
     _menuTile(Icons.event, 'Exams', 1),
-
-    _menuTile(Icons.schedule, 'Monitoring', 2),
+    if (_showMonitoringMenu) _menuTile(Icons.schedule, 'Monitoring', 2),
   ];
 
   Widget _menuTile(IconData icon, String title, int index) {

@@ -13,8 +13,8 @@ class AppRoutes {
   static const String login = '/login';
   static const String forgot = '/forgot';
 
-  static const String teacherDashboard = '/teacher-dashboard';  
-  static const String examMonitoring = '/exam-monitoring';      
+  static const String teacherDashboard = '/teacher-dashboard';
+  static const String examMonitoring = '/exam-monitoring';
   static const String teacherProfile = '/teacher-profile';
 
   // --------------------------------------
@@ -79,10 +79,7 @@ extension NavigatorExtension on BuildContext {
       });
     }
 
-    return Navigator.of(this).pushNamed(
-      finalPath,
-      arguments: arguments,
-    );
+    return Navigator.of(this).pushNamed(finalPath, arguments: arguments);
   }
 
   /// Replace current page (similar to GoRouter go())
@@ -90,7 +87,6 @@ extension NavigatorExtension on BuildContext {
     Navigator.of(this).pushReplacementNamed(name, arguments: arguments);
   }
 }
-
 
 // Example of using the updated navigation with arguments
 // Navigator.of(context).pushNamed(

@@ -51,8 +51,9 @@ class _ForgotPageState extends State<ForgotPage> {
     });
 
     try {
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-southeast1')
-          .httpsCallable('resetPasswordById');
+      final callable = FirebaseFunctions.instanceFor(
+        region: 'asia-southeast1',
+      ).httpsCallable('resetPasswordById');
 
       // Verify teacher id + email via cloud function
       await callable.call({"id": teacherId, "email": email});
@@ -71,11 +72,29 @@ class _ForgotPageState extends State<ForgotPage> {
         if (mounted) context.go('/login');
       });
     } on FirebaseFunctionsException catch (e) {
-      _showError(e.message ?? "Verification failed");
+      debugPrint('Password reset verification failed: ${e.code}');
+      _showError(switch (e.code) {
+        'unavailable' || 'deadline-exceeded' =>
+          'The password reset service is temporarily unavailable. Please try again.',
+        'invalid-argument' => 'Enter a valid Teacher ID and email address.',
+        _ =>
+          'Incorrect Teacher ID or Gmail.',
+      });
     } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? "Error sending reset email");
+      debugPrint('Password reset email failed: ${e.code}');
+      _showError(switch (e.code) {
+        'user-not-found' =>
+          'We couldn’t verify those details. Check your Teacher ID and email and try again.',
+        'invalid-email' => 'Enter a valid email address and try again.',
+        'too-many-requests' =>
+          'Too many attempts. Please wait a moment and try again.',
+        'network-request-failed' =>
+          'Could not connect. Check your internet connection and try again.',
+        _ => 'Unable to send a reset email right now. Please try again.',
+      });
     } catch (e) {
-      _showError("Error: $e");
+      debugPrint('Password reset failed: ${e.runtimeType}');
+      _showError('Unable to send a reset email right now. Please try again.');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -129,10 +148,9 @@ class _ForgotPageState extends State<ForgotPage> {
               children: [
                 Center(
                   child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(
-                      scrollbars: false,
-                      overscroll: false,
-                    ),
+                    behavior: ScrollConfiguration.of(
+                      context,
+                    ).copyWith(scrollbars: false, overscroll: false),
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(16, 64, 16, 24),
                       child: ConstrainedBox(
@@ -152,10 +170,7 @@ class _ForgotPageState extends State<ForgotPage> {
                             borderRadius: BorderRadius.circular(24),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildHeaderZone(),
-                                _buildFormZone(),
-                              ],
+                              children: [_buildHeaderZone(), _buildFormZone()],
                             ),
                           ),
                         ),
@@ -172,7 +187,11 @@ class _ForgotPageState extends State<ForgotPage> {
                     color: Colors.white.withOpacity(0.08),
                     shape: const CircleBorder(),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: _textColor, size: 22),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: _textColor,
+                        size: 22,
+                      ),
                       tooltip: "Back to login",
                       onPressed: () => context.go('/login'),
                     ),
@@ -225,7 +244,11 @@ class _ForgotPageState extends State<ForgotPage> {
               borderRadius: BorderRadius.circular(19),
               child: Container(
                 color: _cardColor,
-                child: const Icon(Icons.lock_reset, size: 42, color: _accentColor),
+                child: const Icon(
+                  Icons.lock_reset,
+                  size: 42,
+                  color: _accentColor,
+                ),
               ),
             ),
           ),
@@ -277,7 +300,11 @@ class _ForgotPageState extends State<ForgotPage> {
                   color: _accentColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.mail_outline, size: 16, color: _accentColor),
+                child: const Icon(
+                  Icons.mail_outline,
+                  size: 16,
+                  color: _accentColor,
+                ),
               ),
               const SizedBox(width: 10),
               const Text(
@@ -318,13 +345,13 @@ class _ForgotPageState extends State<ForgotPage> {
                     icon: Icons.error_outline,
                   )
                 : _successMessage.isNotEmpty
-                    ? _buildBanner(
-                        title: "Email sent",
-                        message: _successMessage,
-                        color: _successColor,
-                        icon: Icons.check_circle_outline,
-                      )
-                    : const SizedBox(width: double.infinity),
+                ? _buildBanner(
+                    title: "Email sent",
+                    message: _successMessage,
+                    color: _successColor,
+                    icon: Icons.check_circle_outline,
+                  )
+                : const SizedBox(width: double.infinity),
           ),
 
           const SizedBox(height: 8),
@@ -450,7 +477,10 @@ class _ForgotPageState extends State<ForgotPage> {
                 const SizedBox(height: 2),
                 Text(
                   message,
-                  style: const TextStyle(color: _mutedTextColor, fontSize: 12.5),
+                  style: const TextStyle(
+                    color: _mutedTextColor,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),

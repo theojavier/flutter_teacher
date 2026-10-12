@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '/helpers/AppTheme.dart';
+import '/widgets/app_dialog.dart';
 
 class TeacherExamsPage extends StatefulWidget {
   const TeacherExamsPage({super.key});
@@ -21,7 +23,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
     with SingleTickerProviderStateMixin {
   static const Color _warning = Color(0xFFFBBF24);
   static const double _tableMinWidth = 960;
-  static const _statusTabs = ['all', 'ongoing', 'finished'];
+  static const _statusTabs = ['all', 'upcoming', 'ongoing', 'finished'];
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final DateFormat _dateFmt = DateFormat('MMM dd, yyyy');
@@ -42,12 +44,16 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
   String _searchQuery = '';
   String _statusFilter = 'all';
   final Set<String> _busy = {};
+  Timer? _statusRefreshTimer;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: _statusTabs.length, vsync: this);
     _teacherIdFuture = _loadTeacherId();
+    _statusRefreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -56,6 +62,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
     _horizontalController.dispose();
     _verticalController.dispose();
     _searchController.dispose();
+    _statusRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -85,7 +92,10 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
           return Scaffold(
             backgroundColor: AppTheme.bg,
             body: _centered(
-              AppTheme.emptyCard(Icons.person_off_outlined, 'Teacher ID not found'),
+              AppTheme.emptyCard(
+                Icons.person_off_outlined,
+                'Teacher ID not found',
+              ),
             ),
           );
         }
@@ -151,8 +161,11 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
                     ? null
                     : IconButton(
                         tooltip: 'Clear search',
-                        icon: const Icon(Icons.close,
-                            color: AppTheme.mutedText, size: 18),
+                        icon: const Icon(
+                          Icons.close,
+                          color: AppTheme.mutedText,
+                          size: 18,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
@@ -163,8 +176,10 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
                 isDense: true,
                 filled: true,
                 fillColor: AppTheme.card,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
@@ -182,6 +197,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
         onTap: (i) => setState(() => _statusFilter = _statusTabs[i]),
         tabs: const [
           Tab(text: 'All'),
+          Tab(text: 'Upcoming'),
           Tab(text: 'Ongoing'),
           Tab(text: 'Finished'),
         ],
@@ -194,10 +210,12 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
       stream: _examsStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return _centered(AppTheme.emptyCard(
-            Icons.error_outline,
-            'Could not load your exams. Check your connection and try again.',
-          ));
+          return _centered(
+            AppTheme.emptyCard(
+              Icons.error_outline,
+              'Could not load your exams. Check your connection and try again.',
+            ),
+          );
         }
         if (!snapshot.hasData) {
           return const Center(
@@ -206,21 +224,27 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
         }
 
         final all = snapshot.data!.docs.toList()
-          ..sort((a, b) => _startMillis(b.data()).compareTo(_startMillis(a.data())));
+          ..sort(
+            (a, b) => _startMillis(b.data()).compareTo(_startMillis(a.data())),
+          );
 
         if (all.isEmpty) {
-          return _centered(AppTheme.emptyCard(
-            Icons.quiz_outlined,
-            'No exams yet. Tap Create Exam to add your first one.',
-          ));
+          return _centered(
+            AppTheme.emptyCard(
+              Icons.quiz_outlined,
+              'No exams yet. Tap Create Exam to add your first one.',
+            ),
+          );
         }
 
         final exams = all.where(_matchesFilters).toList();
         if (exams.isEmpty) {
-          return _centered(AppTheme.emptyCard(
-            Icons.search_off,
-            'No exams match your search or filter.',
-          ));
+          return _centered(
+            AppTheme.emptyCard(
+              Icons.search_off,
+              'No exams match your search or filter.',
+            ),
+          );
         }
 
         final showSwipeHint =
@@ -240,17 +264,24 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
                           ? '${all.length} exams'
                           : '${exams.length} of ${all.length} exams',
                       style: const TextStyle(
-                          color: AppTheme.mutedText, fontSize: 12.5),
+                        color: AppTheme.mutedText,
+                        fontSize: 12.5,
+                      ),
                     ),
                     const Spacer(),
                     if (showSwipeHint) ...const [
-                      Icon(Icons.swap_horiz,
-                          size: 16, color: AppTheme.mutedText),
+                      Icon(
+                        Icons.swap_horiz,
+                        size: 16,
+                        color: AppTheme.mutedText,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         'Swipe sideways for more',
                         style: TextStyle(
-                            color: AppTheme.mutedText, fontSize: 12.5),
+                          color: AppTheme.mutedText,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ],
                   ],
@@ -281,8 +312,10 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
   // ---------------------------------------------------------------------------
 
   Widget _buildTable(List<QueryDocumentSnapshot<Map<String, dynamic>>> exams) {
-    final headerBg =
-        Color.alphaBlend(Colors.black.withOpacity(0.25), AppTheme.header);
+    final headerBg = Color.alphaBlend(
+      Colors.black.withOpacity(0.25),
+      AppTheme.header,
+    );
     const headStyle = TextStyle(
       color: AppTheme.text,
       fontWeight: FontWeight.bold,
@@ -363,27 +396,31 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
             return DataRow2(
               onTap: () => _editExam(doc.id, data),
               cells: [
-                DataCell(Text(
-                  subject,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.text,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                DataCell(
+                  Text(
+                    subject,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.text,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
-                )),
+                ),
                 DataCell(_plainText((data['program'] ?? '-').toString())),
                 DataCell(_plainText((data['yearBlock'] ?? '-').toString())),
                 DataCell(_dateCell(data['startTime'])),
                 DataCell(_dateCell(data['endTime'])),
                 DataCell(Center(child: _statusChip(status))),
-                DataCell(_actionButtons(
-                  examId: doc.id,
-                  subject: subject,
-                  data: data,
-                  monitoringEnabled: monitoringEnabled,
-                )),
+                DataCell(
+                  _actionButtons(
+                    examId: doc.id,
+                    subject: subject,
+                    data: data,
+                    monitoringEnabled: monitoringEnabled,
+                  ),
+                ),
               ],
             );
           }).toList(),
@@ -410,18 +447,27 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_dateFmt.format(d),
-            style: const TextStyle(color: AppTheme.text, fontSize: 13)),
+        Text(
+          _dateFmt.format(d),
+          style: const TextStyle(color: AppTheme.text, fontSize: 13),
+        ),
         const SizedBox(height: 2),
-        Text(_timeFmt.format(d),
-            style: const TextStyle(color: AppTheme.mutedText, fontSize: 12)),
+        Text(
+          _timeFmt.format(d),
+          style: const TextStyle(color: AppTheme.mutedText, fontSize: 12),
+        ),
       ],
     );
   }
 
   Widget _statusChip(String status) {
     final finished = status == 'finished';
-    final color = finished ? AppTheme.error : AppTheme.success;
+    final ongoing = status == 'ongoing';
+    final color = finished
+        ? AppTheme.error
+        : ongoing
+        ? AppTheme.success
+        : _warning;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -431,7 +477,11 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
         border: Border.all(color: color.withOpacity(0.35)),
       ),
       child: Text(
-        finished ? 'Finished' : 'Ongoing',
+        finished
+            ? 'Finished'
+            : ongoing
+            ? 'Ongoing'
+            : 'Upcoming',
         style: TextStyle(
           color: color,
           fontSize: 12,
@@ -459,7 +509,9 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
           tooltip: monitoringEnabled ? 'Stop monitoring' : 'Start monitoring',
           color: monitoringEnabled ? _warning : AppTheme.success,
           busy: busy,
-          onTap: busy ? null : () => _toggleMonitoring(examId, monitoringEnabled),
+          onTap: busy
+              ? null
+              : () => _toggleMonitoring(examId, monitoringEnabled, data),
         ),
         const SizedBox(width: 8),
         _actionIcon(
@@ -533,31 +585,51 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
     return t is Timestamp ? t.millisecondsSinceEpoch : 0;
   }
 
+  DateTime? _asDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
   bool _matchesFilters(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
 
-    if (_statusFilter != 'all' && _statusOf(data) != _statusFilter) {
-      return false;
-    }
+    final status = _statusOf(data);
+    if (_statusFilter != 'all' && status != _statusFilter) return false;
     if (_searchQuery.isEmpty) return true;
 
-    final haystack = [data['subject'], data['program'], data['yearBlock']]
-        .map((v) => (v ?? '').toString().toLowerCase())
-        .join(' ');
+    final haystack = [
+      data['subject'],
+      data['program'],
+      data['yearBlock'],
+    ].map((v) => (v ?? '').toString().toLowerCase()).join(' ');
     return haystack.contains(_searchQuery);
   }
 
-  // Finished if the status says so OR the end time has passed.
   String _statusOf(Map<String, dynamic> data) {
     final raw = (data['status'] ?? '').toString().toLowerCase();
     if (['finished', 'finish', 'complete', 'completed'].contains(raw)) {
       return 'finished';
     }
-    final end = data['endTime'];
-    if (end is Timestamp && end.toDate().isBefore(DateTime.now())) {
+    final now = DateTime.now();
+    final start = _asDate(data['startTime']);
+    final end = _asDate(data['endTime']);
+    if (end != null && !now.isBefore(end)) {
       return 'finished';
     }
-    return 'ongoing';
+    if (['ongoing', 'on-going', 'on going'].contains(raw)) {
+      return 'ongoing';
+    }
+    if (raw == 'upcoming') return 'upcoming';
+    if (data['monitoringEnabled'] == true &&
+        start != null &&
+        end != null &&
+        !now.isBefore(start) &&
+        now.isBefore(end)) {
+      return 'ongoing';
+    }
+    return 'upcoming';
   }
 
   // ---------------------------------------------------------------------------
@@ -565,27 +637,51 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
   // ---------------------------------------------------------------------------
 
   void _addExam(String teacherId) {
-    context.push('/edit-exam', extra: {
-      'teacherId': teacherId,
-      'docId': null,
-      'existing': null,
-    });
+    context.push(
+      '/edit-exam',
+      extra: {'teacherId': teacherId, 'docId': null, 'existing': null},
+    );
   }
 
   void _editExam(String examId, Map<String, dynamic> data) {
-    context.push('/edit-exam/$examId', extra: {
-      'docId': examId,
-      'existing': data,
-    });
+    context.push(
+      '/edit-exam/$examId',
+      extra: {'docId': examId, 'existing': data},
+    );
   }
 
-  Future<void> _toggleMonitoring(String examId, bool currentlyEnabled) async {
+  Future<void> _toggleMonitoring(
+    String examId,
+    bool currentlyEnabled,
+    Map<String, dynamic> data,
+  ) async {
+    if (!currentlyEnabled) {
+      final now = DateTime.now();
+      final start = _asDate(data['startTime']);
+      final end = _asDate(data['endTime']);
+      if (start == null ||
+          end == null ||
+          now.isBefore(start) ||
+          !now.isBefore(end)) {
+        await AppDialog.alert(
+          context,
+          tone: AppTone.warning,
+          title: 'Monitoring is unavailable',
+          message:
+              'Monitoring can only start at or after the exam start time and before the exam end time.',
+        );
+        return;
+      }
+    }
+
     if (currentlyEnabled) {
       final ok = await _confirm(
         title: 'Stop monitoring?',
-        message: 'Students will no longer be monitored for this exam.',
+        message:
+            'Students will no longer be monitored for this exam. If no other '
+            'exams are being monitored, the shared cleanup schedule will pause.',
         confirmLabel: 'Stop',
-        confirmColor: _warning,
+        tone: AppTone.warning,
       );
       if (!ok) return;
     }
@@ -594,15 +690,27 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
     try {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-southeast1')
           .httpsCallable(
-        currentlyEnabled ? 'stopExamMonitoring' : 'startExamMonitoring',
-      );
-      await callable.call({'examId': examId});
+            currentlyEnabled ? 'stopExamMonitoring' : 'startExamMonitoring',
+          );
+      final result = await callable.call({'examId': examId});
+      if (currentlyEnabled) {
+        final end = _asDate(data['endTime']);
+        final ended = end != null && !DateTime.now().isBefore(end);
+        await _db.collection('exams').doc(examId).update({
+          'status': ended ? 'finished' : 'upcoming',
+        });
+      }
+      final scheduleOk = (result.data as Map?)?['scheduleOk'] != false;
 
-      _toast(currentlyEnabled
-          ? 'Monitoring stopped for this exam.'
-          : 'Monitoring started for this exam.');
+      await _showMonitoringResult(
+        currentlyEnabled: currentlyEnabled,
+        scheduleOk: scheduleOk,
+      );
     } catch (e) {
-      _toast('Failed to update monitoring: ${_errorText(e)}', error: true);
+      await _showMonitoringResult(
+        currentlyEnabled: currentlyEnabled,
+        error: _errorText(e),
+      );
     } finally {
       if (mounted) setState(() => _busy.remove(examId));
     }
@@ -611,10 +719,11 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
   Future<void> _deleteExam(String examId, String subject) async {
     final ok = await _confirm(
       title: 'Delete exam?',
-      message: '"$subject" and its questions will be permanently deleted, '
+      message:
+          '"$subject" and its questions will be permanently deleted, '
           'along with the related student notifications.',
       confirmLabel: 'Delete',
-      confirmColor: AppTheme.error,
+      tone: AppTone.danger,
     );
     if (!ok) return;
 
@@ -636,18 +745,28 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
             .where('yearBlock', isEqualTo: examData['yearBlock'])
             .get();
 
-        await Future.wait(studentsSnap.docs.map((student) async {
-          final notifSnap = await student.reference
-              .collection('notifications')
-              .where('examId', isEqualTo: examId)
-              .get();
-          await Future.wait(notifSnap.docs.map((n) => n.reference.delete()));
-        }));
+        await Future.wait(
+          studentsSnap.docs.map((student) async {
+            final notifSnap = await student.reference
+                .collection('notifications')
+                .where('examId', isEqualTo: examId)
+                .get();
+            await Future.wait(notifSnap.docs.map((n) => n.reference.delete()));
+          }),
+        );
       }
 
-      _toast('Exam and related notifications deleted.');
+      await _showActionResult(
+        title: 'Exam deleted',
+        message: 'Exam and related notifications deleted.',
+        tone: AppTone.success,
+      );
     } catch (e) {
-      _toast('Error deleting exam: ${_errorText(e)}', error: true);
+      await _showActionResult(
+        title: 'Unable to delete exam',
+        message: _errorText(e),
+        tone: AppTone.error,
+      );
     } finally {
       if (mounted) setState(() => _busy.remove(examId));
     }
@@ -661,56 +780,53 @@ class _TeacherExamsPageState extends State<TeacherExamsPage>
     required String title,
     required String message,
     required String confirmLabel,
-    Color? confirmColor,
+    AppTone tone = AppTone.info,
   }) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.header,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: AppTheme.text,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(color: AppTheme.mutedText, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child:
-                const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: confirmColor ?? AppTheme.accent,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(confirmLabel),
-          ),
-        ],
-      ),
+    return AppDialog.confirm(
+      context,
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      tone: tone,
     );
-    return result == true;
   }
 
-  void _toast(String message, {bool error = false}) {
+  Future<void> _showMonitoringResult({
+    required bool currentlyEnabled,
+    bool scheduleOk = true,
+    String? error,
+  }) async {
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: error ? AppTheme.error : AppTheme.card,
-        content: Text(message, style: const TextStyle(color: Colors.white)),
-      ),
+
+    final failed = error != null || !scheduleOk;
+    final title = error != null
+        ? 'Monitoring update failed'
+        : currentlyEnabled
+        ? 'Monitoring stopped'
+        : 'Monitoring started';
+    final message = error != null
+        ? 'Could not ${currentlyEnabled ? 'stop' : 'start'} monitoring.\n$error'
+        : !scheduleOk
+        ? 'Monitoring was ${currentlyEnabled ? 'stopped' : 'started'}, but the automatic cleanup schedule could not be updated. Check the Cloud Function logs.'
+        : currentlyEnabled
+        ? 'Monitoring is stopped for this exam. If no other exams are being monitored, the shared cleanup schedule is paused until monitoring starts again.'
+        : 'Monitoring is active for this exam. The shared cleanup schedule is running and checks monitored exams every minute.';
+
+    await AppDialog.alert(
+      context,
+      title: title,
+      message: message,
+      tone: failed ? AppTone.error : AppTone.success,
     );
+  }
+
+  Future<void> _showActionResult({
+    required String title,
+    required String message,
+    required AppTone tone,
+  }) async {
+    if (!mounted) return;
+    await AppDialog.alert(context, title: title, message: message, tone: tone);
   }
 
   String _errorText(Object e) {

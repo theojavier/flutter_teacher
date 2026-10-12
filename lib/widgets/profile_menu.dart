@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -94,8 +93,8 @@ class _ProfileMenuTriggerState extends State<ProfileMenuTrigger> {
                 backgroundColor: Colors.white24,
                 backgroundImage:
                     widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty
-                        ? NetworkImage(widget.avatarUrl!)
-                        : null,
+                    ? NetworkImage(widget.avatarUrl!)
+                    : null,
                 child: (widget.avatarUrl == null || widget.avatarUrl!.isEmpty)
                     ? const Icon(Icons.person, size: 16, color: Colors.white)
                     : null,
@@ -134,8 +133,10 @@ class ProfileMenuPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final panelWidth =
-        (MediaQuery.of(context).size.width * 0.5).clamp(220.0, 260.0);
+    final panelWidth = (MediaQuery.of(context).size.width * 0.5).clamp(
+      220.0,
+      260.0,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -179,11 +180,14 @@ class ProfileMenuPanel extends StatelessWidget {
                         backgroundColor: Colors.white24,
                         backgroundImage:
                             avatarUrl != null && avatarUrl!.isNotEmpty
-                                ? NetworkImage(avatarUrl!)
-                                : null,
+                            ? NetworkImage(avatarUrl!)
+                            : null,
                         child: (avatarUrl == null || avatarUrl!.isEmpty)
-                            ? const Icon(Icons.person,
-                                size: 22, color: Colors.white)
+                            ? const Icon(
+                                Icons.person,
+                                size: 22,
+                                color: Colors.white,
+                              )
                             : null,
                       ),
                       Positioned(
@@ -219,8 +223,11 @@ class ProfileMenuPanel extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.badge_outlined,
-                            size: 13, color: Colors.white70),
+                        const Icon(
+                          Icons.badge_outlined,
+                          size: 13,
+                          color: Colors.white70,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           idNumber!,
@@ -376,7 +383,9 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       if (mounted) setState(() => _errorMessage = _messageFor(e));
     } catch (_) {
       if (mounted) {
-        setState(() => _errorMessage = "Something went wrong. Please try again.");
+        setState(
+          () => _errorMessage = "Something went wrong. Please try again.",
+        );
       }
     } finally {
       if (mounted) setState(() => _isSending = false);
@@ -429,10 +438,15 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _accentColor.withOpacity(0.15),
-                        border: Border.all(color: _accentColor.withOpacity(0.4)),
+                        border: Border.all(
+                          color: _accentColor.withOpacity(0.4),
+                        ),
                       ),
-                      child: const Icon(Icons.lock_reset,
-                          color: _accentColor, size: 28),
+                      child: const Icon(
+                        Icons.lock_reset,
+                        color: _accentColor,
+                        size: 28,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     const Text(
@@ -483,23 +497,31 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 14),
+                          vertical: 12,
+                          horizontal: 14,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.22),
                           borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: Colors.white.withOpacity(0.08)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.08),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.alternate_email,
-                                color: _accentColor, size: 18),
+                            const Icon(
+                              Icons.alternate_email,
+                              color: _accentColor,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 email ?? "No email on file",
                                 style: const TextStyle(
-                                    color: _textColor, fontSize: 14),
+                                  color: _textColor,
+                                  fontSize: 14,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -515,12 +537,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: Colors.white.withOpacity(0.2)),
+                              color: Colors.white.withOpacity(0.2),
+                            ),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
-                          child: const Text("Done",
-                              style: TextStyle(color: _textColor)),
+                          child: const Text(
+                            "Done",
+                            style: TextStyle(color: _textColor),
+                          ),
                         ),
                       )
                     else
@@ -531,8 +557,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                               onPressed: _isSending
                                   ? null
                                   : () => Navigator.of(context).pop(),
-                              child: const Text("Cancel",
-                                  style: TextStyle(color: _mutedTextColor)),
+                              child: const Text(
+                                "Cancel",
+                                style: TextStyle(color: _mutedTextColor),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -547,11 +575,12 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _accentColor,
                                   foregroundColor: Colors.white,
-                                  disabledBackgroundColor:
-                                      _accentColor.withOpacity(0.6),
+                                  disabledBackgroundColor: _accentColor
+                                      .withOpacity(0.6),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14)),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
                                 ),
                                 child: _isSending
                                     ? const SizedBox(
@@ -611,8 +640,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                 const SizedBox(height: 2),
                 Text(
                   message,
-                  style:
-                      const TextStyle(color: _mutedTextColor, fontSize: 12.5),
+                  style: const TextStyle(
+                    color: _mutedTextColor,
+                    fontSize: 12.5,
+                  ),
                 ),
               ],
             ),

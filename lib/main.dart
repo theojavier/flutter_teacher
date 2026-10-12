@@ -139,7 +139,8 @@ class _MyAppState extends State<MyApp> {
             int index = 0;
 
             if (location.startsWith('/teacher-dashboard')) index = 0;
-            if (location.startsWith('/teacher-exams')) index = 1;
+            if (location.startsWith('/teacher-exams') ||
+    location.startsWith('/exam-clips')) index = 1;
             if (location.startsWith('/teacher-monitoring')) index = 2;
 
             return ResponsiveScaffold(
