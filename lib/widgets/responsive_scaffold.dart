@@ -8,9 +8,34 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
-import 'profile_menu.dart'; // ensure this resolves to your widgets/profile_menu.dart
-import 'nav_header.dart'; 
+import 'profile_menu.dart';
+import 'teacher_notification_bubble.dart';
 
+class _TeacherNavItem {
+  final String label;
+  final String route;
+  final IconData icon;
+
+  const _TeacherNavItem(this.label, this.route, this.icon);
+}
+
+const List<_TeacherNavItem> _teacherNavItems = [
+  _TeacherNavItem('Dashboard', '/teacher-dashboard', Icons.home_outlined),
+  _TeacherNavItem('Exams', '/teacher-exams', Icons.assignment_outlined),
+  _TeacherNavItem('Students', '/student-management', Icons.people_outline),
+  _TeacherNavItem(
+    'Schedule',
+    '/teacher-schedule',
+    Icons.calendar_month_outlined,
+  ),
+  _TeacherNavItem(
+    'Monitoring',
+    '/teacher-monitoring',
+    Icons.visibility_outlined,
+  ),
+  _TeacherNavItem('Reports', '/teacher-reports', Icons.analytics_outlined),
+  _TeacherNavItem('My Profile', '', Icons.person_outline),
+];
 class ResponsiveScaffold extends StatefulWidget {
   final Widget homePage;
   final Widget examPage;
@@ -34,7 +59,15 @@ class ResponsiveScaffold extends StatefulWidget {
 }
 
 class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
-  static const bool _showMonitoringMenu = false;
+  static const Color _paper = Color(0xFFF7F8F6);
+  static const Color _ink = Color(0xFF111217);
+  static const Color _inkSoft = Color(0xFF1A1B20);
+  static const Color _inkLine = Color(0xFF36373C);
+  static const Color _muted = Color(0xFF777981);
+  static const Color _line = Color(0xFFDCDDDC);
+  static const Color _blue = Color(0xFF153CFF);
+  static const Color _blueDark = Color(0xFF0727C7);
+  static const Color _blueWash = Color(0xFFE9EDFF);
 
   String? profileImageUrl;
   String headerName = "Loading...";
@@ -47,22 +80,6 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
   // Needed to close the drawer: this State's context sits ABOVE the Scaffold,
   // so Scaffold.of(context) can't find it.
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  // Shared theme palette (matches student scaffold)
-  static const Color _bgColor = Color(0xFF0B1220);
-  static const Color _headerColor = Color(0xFF0F2B45);
-  static const Color _headerColorLight = Color(0xFF17456F);
-  static const Color _cardColor = Color(0xFF0F3B61);
-  static const Color _textColor = Color(0xFFE6F0F8);
-  static const Color _mutedTextColor = Color(0xFF9FB0C3);
-  static const Color _accentColor = Color(0xFF3D8BFF);
-
-  // Menu index -> route. Single source of truth for navigation.
-  static const List<String> _routes = [
-    '/teacher-dashboard',
-    '/teacher-exams',
-    '/teacher-monitoring',
-  ];
 
   @override
   void initState() {
@@ -153,10 +170,24 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
   // FIX: context.go() replaces the location, so the browser URL changes and a
   // reload lands on the same page. (context.push() didn't update the URL.)
-  void _onSelectPage(int index) {
-    setState(() => selectedIndex = index);
+  void _onSelectPage(_TeacherNavItem item) {
+    final route = item.route.isNotEmpty
+        ? item.route
+        : '/teacherProfile/${_userId ?? FirebaseAuth.instance.currentUser?.uid ?? ''}';
+    if (route.endsWith('/')) return;
+
+    setState(() {
+      // in _onSelectPage
+selectedIndex = switch (item.route) {
+  '/teacher-dashboard' => 0,
+  '/teacher-exams' => 1,
+  '/teacher-schedule' => 2,
+  '/teacher-monitoring' => 3,
+  _ => -1,
+};
+    });
     _closeDrawerIfOpen();
-    context.go(_routes[index]);
+    context.go(route);
   }
 
   // Shared handler so both the AppBar's ProfileMenuTrigger and the
@@ -168,59 +199,292 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     if (uid != null) context.go('/teacherProfile/$uid');
   }
 
-  Future<void> _logout(BuildContext context) async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      await _profileSubscription?.cancel();
-      _cachedProfile = null;
-      profileImageUrl = null;
-      headerName = "Logged out";
-      if (mounted) context.go('/login');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Logout failed")));
-      }
+  String _activeRouteKey() {
+    final path = GoRouterState.of(context).uri.path;
+
+    if (path.startsWith('/teacher-dashboard')) return '/teacher-dashboard';
+    if (path.startsWith('/teacher-schedule')) return '/teacher-schedule';
+    if (path.startsWith('/teacher-exams') ||
+        path.startsWith('/edit-question')) {
+      return '/teacher-exams';
     }
+    if (path.startsWith('/teacher-monitoring') ||
+        path.startsWith('/exam-monitoring')) {
+      return '/teacher-monitoring';
+    }
+    if (path.startsWith('/student-management')) return '/student-management';
+    if (path.startsWith('/teacher-reports')) return '/teacher-reports';
+    if (path.startsWith('/teacher-notifications')) return 'notifications';
+    if (path.startsWith('/teacherProfile')) return 'profile';
+    // end of _activeRouteKey
+return switch (selectedIndex) {
+  1 => '/teacher-exams',
+  2 => '/teacher-schedule',
+  3 => '/teacher-monitoring',
+  _ => '/teacher-dashboard',
+};
   }
 
-  Widget _buildSidebar(int activeIndex) {
+  String _initials() {
+    final parts = headerName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return 'T';
+    return (parts.first[0] + (parts.length > 1 ? parts.last[0] : ''))
+        .toUpperCase();
+  }
+
+  Widget _buildSidebar(String activeRoute) {
     return Container(
-      width: 276,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.zero,
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [_headerColor, _bgColor],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.zero,
-        child: Stack(
+      width: 256,
+      color: _ink,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned(top: -70, right: -70, child: _glowBlob(220, 0.22)),
-
-            Positioned(bottom: 90, left: -100, child: _glowBlob(240, 0.10)),
-
-            Positioned.fill(
-              child: ListView(
-                padding: EdgeInsets.zero,
+            GestureDetector(
+              onTap: () => context.go('/teacher-dashboard'),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(2, 0, 2, 20),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: _inkLine)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Image.asset(
+                        'assets/images/teacher-removebg-preview.png',
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FOTS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                        SizedBox(height: 7),
+                        Text(
+                          'FACE ON THE SCREEN',
+                          style: TextStyle(
+                            color: Color(0xFFA1A2AC),
+                            fontSize: 9,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _inkSoft,
+                border: Border.all(color: _inkLine),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Row(
                 children: [
-                  NavHeader(
-                    name: headerName,
-                    section: headerSection,
-                    profileImageUrl: profileImageUrl,
-                    onProfileTap: _goToProfile,
+                  CircleAvatar(
+                    radius: 19,
+                    backgroundColor: _blue,
+                    backgroundImage:
+                        profileImageUrl != null && profileImageUrl!.isNotEmpty
+                        ? NetworkImage(profileImageUrl!)
+                        : null,
+                    child: profileImageUrl == null || profileImageUrl!.isEmpty
+                        ? Text(
+                            _initials(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          )
+                        : null,
                   ),
-
-                  const Divider(height: 1, color: Colors.white24),
-
-                  ..._menuTiles(),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          headerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          headerSection.isEmpty
+                              ? 'Faculty member'
+                              : headerSection,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFA1A2AA),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(6, 0, 6, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'NAVIGATION',
+                    style: TextStyle(
+                      color: Color(0xFF9C9DA5),
+                      fontSize: 10,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  Text(
+                    '01 - 06',
+                    style: TextStyle(color: Color(0xFF63646C), fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: _teacherNavItems.length,
+                itemBuilder: (context, index) {
+                  final item = _teacherNavItems[index];
+                  final itemRoute = item.route.isEmpty ? 'profile' : item.route;
+                  final selected = activeRoute == itemRoute;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: SizedBox(
+                      height: 46,
+                      child: Material(
+                        color: selected ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        child: InkWell(
+                          onTap: () => _onSelectPage(item),
+                          borderRadius: BorderRadius.circular(6),
+                          hoverColor: selected
+                              ? Colors.transparent
+                              : const Color(0xFF23242B),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  item.icon,
+                                  size: 19,
+                                  color: selected
+                                      ? _ink
+                                      : const Color(0xFFA1A2AB),
+                                ),
+                                const SizedBox(width: 13),
+                                Expanded(
+                                  child: Text(
+                                    item.label,
+                                    style: TextStyle(
+                                      color: selected
+                                          ? _ink
+                                          : const Color(0xFFA1A2AB),
+                                      fontSize: 13,
+                                      fontWeight: selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '${index + 1}'.padLeft(2, '0'),
+                                  style: TextStyle(
+                                    color: selected
+                                        ? const Color(0xFF62646A)
+                                        : const Color(0xFF84858C),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.only(top: 16),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: _inkLine)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 4, right: 9),
+                    child: Icon(
+                      Icons.circle,
+                      size: 8,
+                      color: Color(0xFF6FE4AA),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'TEACHER WORKSPACE',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'FACULTY ACCESS / 2026',
+                          style: TextStyle(
+                            color: Color(0xFFA2A2AA),
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -230,114 +494,166 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     );
   }
 
-  // Which menu item is highlighted, taken from the CURRENT URL
-  // (so it stays right after a reload). -1 = nothing highlighted.
-  int _activeIndexFromRoute() {
-    final path = GoRouterState.of(context).uri.path;
-
-    if (path.startsWith('/teacher-dashboard')) return 0;
-    if (path.startsWith('/teacher-exams') ||
-    path.startsWith('/edit-exam') ||
-    path.startsWith('/edit-question') ||
-    path.startsWith('/exam-clips')) {
-  return 1;
-}
-    if (path.startsWith('/teacher-monitoring') ||
-        path.startsWith('/exam-monitoring')) {
-      return 2;
-    }
-
-    return -1; // profile, student-management, etc.
+  Widget _buildDesktopTopBar(String activeRoute) {
+    final activeItem = _teacherNavItems.firstWhere(
+      (item) => (item.route.isEmpty ? 'profile' : item.route) == activeRoute,
+      orElse: () => _teacherNavItems.first,
+    );
+    return Container(
+      height: 76,
+      padding: const EdgeInsets.symmetric(horizontal: 35),
+      decoration: BoxDecoration(
+        color: _paper,
+        border: const Border(bottom: BorderSide(color: _line)),
+      ),
+      child: Row(
+        children: [
+          Text.rich(
+            TextSpan(
+              style: const TextStyle(fontSize: 11, letterSpacing: 0.7),
+              children: [
+                const TextSpan(
+                  text: 'WORKSPACE / ',
+                  style: TextStyle(color: _muted),
+                ),
+                TextSpan(
+                  text: activeRoute == 'notifications'
+                      ? 'NOTIFICATIONS'
+                      : activeItem.label.toUpperCase(),
+                  style: const TextStyle(
+                    color: _ink,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 13),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _blueWash,
+              border: Border.all(color: const Color(0xFFD7DEFF)),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              'FACULTY WORKSPACE',
+              style: TextStyle(
+                color: _blueDark,
+                fontSize: 10,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _notificationButton(),
+          const SizedBox(width: 12),
+          _profileButton(),
+        ],
+      ),
+    );
   }
 
-  List<Widget> _buildActions(BuildContext context) {
-    return [
-      Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: ProfileMenuTrigger(
-          avatarUrl: profileImageUrl,
-          name: headerName,
-          idNumber: headerSection,
-          onViewProfile: _goToProfile,
-          onChangePassword: () {
-            confirmChangePassword(context);
-          },
-          onLogout: () => _logout(context),
-        ),
-      ),
-    ];
+  Widget _notificationButton() => const TeacherNotificationBubble();
+
+  Widget _profileButton() {
+    return ProfileMenuTrigger(
+      avatarUrl: profileImageUrl,
+      name: headerName,
+      idNumber: headerSection.isNotEmpty ? headerSection : null,
+      onViewProfile: _goToProfile,
+      onChangePassword: null,
+      onLogout: _handleLogout,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = _isDesktop(context);
+    final activeRoute = _activeRouteKey();
+    final page = widget.detailPage ?? widget.child;
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: _bgColor,
-      appBar: AppBar(
-        backgroundColor: _headerColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        automaticallyImplyLeading: !isDesktop,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [_headerColorLight, _headerColor],
-            ),
-            border: Border(
-              bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
-            ),
-          ),
-        ),
-        title: GestureDetector(
-          // FIX: '/Dashboard' isn't a route -> use the real one.
-          onTap: () => context.go('/teacher-dashboard'),
-          child: Image.asset(
-            'assets/images/fots_teacher.png',
-            height: 80,
-            width: 120,
-          ),
-        ),
-        leading: isDesktop
-            ? null
-            : Builder(
-                builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.white),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+      backgroundColor: _paper,
+      appBar: isDesktop
+          ? null
+          : AppBar(
+              toolbarHeight: 64,
+              backgroundColor: _paper,
+              foregroundColor: _ink,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              automaticallyImplyLeading: false,
+              titleSpacing: 0,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  tooltip: 'Open navigation',
+                  icon: const Icon(Icons.menu_rounded),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
                 ),
               ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Center(
-              child: ProfileMenuTrigger(
-                avatarUrl: profileImageUrl,
-                name: headerName,
-                idNumber: headerSection.isNotEmpty ? headerSection : null,
-                // FIX: '/profile' isn't a route -> use the shared handler.
-                onViewProfile: _goToProfile,
-                onChangePassword: null,
-                onLogout: _handleLogout,
+              title: GestureDetector(
+                onTap: () => context.go('/teacher-dashboard'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TeacherLogo(size: 34),
+                    SizedBox(width: 9),
+                    Text(
+                      'FOTS',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(width: 7),
+                    Text(
+                      'TEACHER',
+                      style: TextStyle(
+                        color: _blue,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              actions: [
+                _notificationButton(),
+                const SizedBox(width: 8),
+                _profileButton(),
+                const SizedBox(width: 12),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      drawer: isDesktop ? null : _buildDrawer(context),
-      body: Row(
-        children: [
-          // DESKTOP SIDEBAR
-          if (isDesktop) _buildSidebar(_activeIndexFromRoute()),
-
-          // PAGE CONTENT
-          Expanded(child: widget.detailPage ?? widget.child),
-        ],
-      ),
+      drawer: isDesktop
+          ? null
+          : Drawer(
+              width: 284,
+              backgroundColor: _ink,
+              shape: const RoundedRectangleBorder(),
+              child: SafeArea(child: _buildSidebar(activeRoute)),
+            ),
+      body: isDesktop
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSidebar(activeRoute),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildDesktopTopBar(activeRoute),
+                      Expanded(child: page),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : page,
     );
   }
 
@@ -360,193 +676,28 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
       ).showSnackBar(SnackBar(content: Text('Logout failed: $e')));
     }
   }
+}
 
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: _headerColor,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          NavHeader(
-            name: headerName,
-            section: headerSection,
-            profileImageUrl: profileImageUrl,
-            onProfileTap: _goToProfile,
-          ),
+class _TeacherLogo extends StatelessWidget {
+  final double size;
 
-          const Divider(height: 1, color: Colors.white24),
+  const _TeacherLogo({required this.size});
 
-          ..._menuTiles(),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _menuTiles() => [
-    _menuTile(Icons.home, 'Dashboard', 0),
-    _menuTile(Icons.event, 'Exams', 1),
-    if (_showMonitoringMenu) _menuTile(Icons.schedule, 'Monitoring', 2),
-  ];
-
-  Widget _menuTile(IconData icon, String title, int index) {
-    final activeIndex = _activeIndexFromRoute();
-    final selected = activeIndex == index;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: selected
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _accentColor.withOpacity(0.28),
-                    _accentColor.withOpacity(0.06),
-                  ],
-                )
-              : null,
-          border: Border.all(
-            color: selected
-                ? _accentColor.withOpacity(0.5)
-                : Colors.transparent,
-          ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _onSelectPage(index),
-            borderRadius: BorderRadius.circular(16),
-            splashColor: _accentColor.withOpacity(0.15),
-            hoverColor: Colors.white.withOpacity(0.04),
-            highlightColor: Colors.transparent,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, 8, 12, 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: selected ? _accentColor : Colors.transparent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  _glowChip(icon, active: selected),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.w600,
-                        color: selected
-                            ? _textColor
-                            : _textColor.withOpacity(0.85),
-                      ),
-                    ),
-                  ),
-
-                  if (selected)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _accentColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _accentColor.withOpacity(0.6),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: _mutedTextColor.withOpacity(0.6),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _glowBlob(double size, double opacity) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              _accentColor.withOpacity(opacity),
-              _accentColor.withOpacity(0),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _glowChip(
-    IconData icon, {
-    double iconSize = 18,
-    double padding = 8,
-    double ring = 2,
-    double radius = 12,
-    bool active = true,
-  }) {
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(ring),
+      width: size,
+      height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: active
-              ? [_accentColor.withOpacity(0.9), _accentColor.withOpacity(0.25)]
-              : [
-                  Colors.white.withOpacity(0.18),
-                  Colors.white.withOpacity(0.05),
-                ],
-        ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius - ring),
-        child: Container(
-          color: _cardColor,
-          padding: EdgeInsets.all(padding),
-          child: Icon(
-            icon,
-            size: iconSize,
-            color: active ? Colors.white : _mutedTextColor,
-          ),
-        ),
+      child: Image.asset(
+        'assets/images/teacher-removebg-preview.png',
+        width: size * 0.86,
+        height: size * 0.86,
+        fit: BoxFit.contain,
       ),
     );
   }

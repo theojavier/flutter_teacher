@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   AppTheme._();
 
   // ---------- COLORS ----------
-  static const Color bg = Color(0xFF0B1220);
-  static const Color header = Color(0xFF0F2B45);
-  static const Color headerLight = Color(0xFF17456F);
-  static const Color card = Color(0xFF0F3B61);
-  static const Color text = Color(0xFFE6F0F8);
-  static const Color mutedText = Color(0xFF9FB0C3);
-  static const Color accent = Color(0xFF3D8BFF);
-  static const Color success = Color(0xFF4ADE80);
-  static const Color error = Color(0xFFF87171);
+  static const Color bg = Color(0xFFF7F8F6);
+  static const Color header = Color(0xFFFFFFFF);
+  static const Color headerLight = Color(0xFFFCEBF0);
+  static const Color card = Color(0xFFFFFFFF);
+  static const Color text = Color(0xFF121217);
+  static const Color mutedText = Color(0xFF75777D);
+  static const Color accent = Color(0xFFDF2D45);
+  static const Color redDark = Color(0xFFB81935);
+  static const Color redSoft = Color(0xFFFCEBF0);
+  static const Color poster = Color(0xFFEA3C50);
+  static const Color success = Color(0xFF27804A);
+  static const Color error = Color(0xFFB81935);
+  static const Color line = Color(0xFFDFE0DE);
+  static const Color soft = Color(0xFFEFF0ED);
 
   // ---------- OPTIONAL: full Material ThemeData ----------
   /// Use in MaterialApp: theme: AppTheme.themeData
   static ThemeData get themeData => ThemeData(
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     scaffoldBackgroundColor: bg,
-    colorScheme: const ColorScheme.dark(
+    colorScheme: const ColorScheme.light(
       primary: accent,
       secondary: accent,
       surface: card,
@@ -31,33 +37,42 @@ class AppTheme {
       elevation: 0,
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(color: accent),
-    textTheme: const TextTheme(
-      bodyMedium: TextStyle(color: text),
-      bodyLarge: TextStyle(color: text),
+    textTheme: GoogleFonts.interTextTheme(
+      const TextTheme(
+        bodyMedium: TextStyle(color: text),
+        bodyLarge: TextStyle(color: text),
+      ),
     ),
   );
 
+  static TextStyle display(
+    double size, {
+    Color color = text,
+    double ls = -0.05,
+    double h = 1.05,
+  }) => GoogleFonts.spaceGrotesk(
+    fontSize: size,
+    fontWeight: FontWeight.w700,
+    color: color,
+    letterSpacing: size * ls,
+    height: h,
+  );
+
+  static TextStyle mono(double size, {Color color = mutedText}) =>
+      GoogleFonts.dmMono(
+        fontSize: size,
+        color: color,
+        letterSpacing: size * 0.07,
+      );
+
   // ---------- DECORATIONS ----------
 
-  /// Standard gradient card (stat cards, tables, empty states, etc.)
-  static BoxDecoration cardDecoration() {
-    return BoxDecoration(
-      borderRadius: BorderRadius.circular(18),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [card.withOpacity(0.9), card.withOpacity(0.55)],
-      ),
-      border: Border.all(color: Colors.white.withOpacity(0.06)),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 12,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    );
-  }
+  /// Flat bordered card used by the admin dashboard.
+  static BoxDecoration cardDecoration() => BoxDecoration(
+    borderRadius: BorderRadius.circular(11),
+    color: card,
+    border: Border.all(color: line),
+  );
 
   /// Big hero/banner gradient (top welcome card)
   static BoxDecoration heroDecoration() {
@@ -66,13 +81,13 @@ class AppTheme {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [headerLight, header],
+        colors: [Colors.white, headerLight],
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.25),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
+          color: accent.withOpacity(0.08),
+          blurRadius: 18,
+          offset: const Offset(0, 6),
         ),
       ],
     );
@@ -115,14 +130,14 @@ class AppTheme {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.25),
-        borderRadius: BorderRadius.circular(6),
+        color: const Color(0xFFFCEBF0),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          color: Colors.white70,
+          color: accent,
           fontSize: 10,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.0,
@@ -144,7 +159,7 @@ class AppTheme {
 
     return InputDecoration(
       filled: true,
-      fillColor: Colors.black.withOpacity(0.22),
+      fillColor: soft,
       labelText: label,
       helperText: helper,
       helperStyle: const TextStyle(color: mutedText),
@@ -308,7 +323,7 @@ class AppTheme {
     );
   }
 
-  /// Table card: dark header strip, shaded alternate rows, scrollable
+  /// Table card with the admin directory's light header and row separators.
   static Widget tableCard({
     required List<String> headers,
     required List<List<Widget>> rows,
@@ -325,16 +340,10 @@ class AppTheme {
             child: Table(
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               columnWidths: columnWidths,
-              border: TableBorder(
-                horizontalInside: BorderSide(
-                  color: Colors.white.withOpacity(0.06),
-                ),
-              ),
+              border: TableBorder(horizontalInside: BorderSide(color: line)),
               children: [
                 TableRow(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.22),
-                  ),
+                  decoration: const BoxDecoration(color: soft),
                   children: [
                     for (final h in headers)
                       tableCell(h, weight: FontWeight.bold),
@@ -342,11 +351,7 @@ class AppTheme {
                 ),
                 for (int i = 0; i < rows.length; i++)
                   TableRow(
-                    decoration: BoxDecoration(
-                      color: i.isOdd
-                          ? Colors.white.withOpacity(0.03)
-                          : Colors.transparent,
-                    ),
+                    decoration: BoxDecoration(color: i.isOdd ? bg : card),
                     children: rows[i],
                   ),
               ],
@@ -393,7 +398,7 @@ class AppTheme {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: soft,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -447,4 +452,39 @@ class AppTheme {
       ),
     );
   }
+  /// Blue empty-state card — original layout, blue icon and box.
+static Widget emptyCardBlue(IconData icon, String message) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+    decoration: cardDecoration(),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF153CFF).withOpacity(0.15),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.notifications_none,
+            color: Color(0xFF153CFF),
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: mutedText,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }

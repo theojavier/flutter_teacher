@@ -2,14 +2,160 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isTeacher() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ID is string
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ID.size() > 0;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function teacherOwnsExam(examId) {
+      return isTeacher()
+        && exists(/databases/$(database)/documents/exams/$(examId))
+        && get(/databases/$(database)/documents/exams/$(examId)).data.teacherId
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ID;
+    }
+
+    function strikeCountMatchesEvidence(data, result) {
+      let cheatingCount = result.get('cheatingCount', null);
+      return data.strikeCountAtReport
+        == (cheatingCount == null
+          ? result.get('cheatCount', 0)
+          : cheatingCount);
+    }
+
+    function validIncidentFields() {
+      let data = request.resource.data;
+      return data.keys().hasAll([
+          'reportType', 'category', 'severity', 'reason', 'status',
+          'reportedBy', 'reportedByName', 'teacherId', 'batchId', 'source',
+          'createdAt', 'updatedAt', 'batchSize'
+        ])
+        && data.keys().hasOnly([
+          'reportType', 'category', 'severity', 'reason', 'status',
+          'reportedBy', 'reportedByName', 'teacherId', 'batchId', 'source',
+          'createdAt', 'updatedAt', 'batchSize', 'examId', 'examTitle',
+          'classId', 'studentId', 'studentName', 'studentEmail',
+          'resultPath', 'strikeCountAtReport'
+        ])
+        && data.reportType in ['student', 'problem']
+        && data.severity in ['low', 'medium', 'high']
+        && data.reason is string
+        && data.reason.size() >= 10
+        && data.reason.size() <= 1000
+        && data.status == 'pending'
+        && data.reportedBy == request.auth.uid
+        && data.reportedByName is string
+        && data.reportedByName.size() <= 256
+        && data.teacherId
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ID
+        && data.batchId is string
+        && data.batchId.size() > 0
+        && data.source in ['teacher_reports', 'teacher_exam_clips']
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && data.batchSize is int
+        && data.batchSize >= 1
+        && data.batchSize <= 25
+        && (
+          (data.reportType == 'student'
+            && data.category in [
+              'suspected_cheating', 'suspicious_behavior', 'identity_concern',
+              'misconduct', 'technical_issue', 'other'
+            ]
+            && data.keys().hasAll([
+              'examId', 'examTitle', 'classId', 'studentId', 'studentName',
+              'resultPath', 'strikeCountAtReport'
+            ])
+            && data.examId is string
+            && data.examTitle is string
+            && data.classId is string
+            && data.studentId is string
+            && data.studentName is string
+            && data.strikeCountAtReport is int
+            && data.strikeCountAtReport >= 0
+            && data.resultPath
+              == 'examResults/' + data.examId + '/students/' + data.studentId
+            && teacherOwnsExam(data.examId)
+            && exists(/databases/$(database)/documents/examResults/$(data.examId)/students/$(data.studentId))
+            && strikeCountMatchesEvidence(
+              data,
+              get(/databases/$(database)/documents/examResults/$(data.examId)/students/$(data.studentId)).data
+            )
+            && (!('studentEmail' in data)
+              || (data.studentEmail is string && data.studentEmail.size() <= 254)))
+          ||
+          (data.reportType == 'problem'
+            && data.category in [
+              'system_bug', 'monitoring_issue', 'content_error', 'connectivity',
+              'other'
+            ]
+            && data.batchSize == 1
+            && data.studentName == 'General report'
+            && !('studentId' in data)
+            && !('resultPath' in data)
+            && !('strikeCountAtReport' in data)
+            && !('studentEmail' in data)
+            && (!('examId' in data)
+              || (data.examId is string
+                && data.examTitle is string
+                && data.classId is string
+                && teacherOwnsExam(data.examId))))
+        );
+    }
+
     // Login uses Teacher ID to find the Firebase Auth email before sign-in.
-    match /users/{document=**} {
+    match /users/{userId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create: if isAdmin();
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.auth.uid == userId
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'role', 'ID', 'studentId', 'type', 'email'
+          ]));
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    match /incidentReports/{reportId} {
+      allow create: if isTeacher() && validIncidentFields();
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.reportedBy == request.auth.uid);
+      allow update: if isAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'dismissed']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'adminNote', 'reviewedBy', 'reviewedByName',
+          'reviewedAt', 'handoffStatus', 'updatedAt'
+        ])
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.adminNote is string
+        && request.resource.data.adminNote.size() <= 1000;
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null
+        && !document.matches('^incidentReports(/.*)?$')
+        && !document.matches('^users/[^/]+$');
     }
   }
 }
