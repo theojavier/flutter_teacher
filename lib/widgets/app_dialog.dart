@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../helpers/app_theme.dart';
+import '../helpers/AppTheme.dart';
 
 enum AppTone { info, success, warning, danger, error }
 
@@ -165,10 +165,10 @@ class AppDialog {
       useRootNavigator: false, // <- keeps it inside the main view
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: Colors.black.withOpacity(0.55),
       transitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (ctx, animation, secondaryAnimation) => builder(ctx),
-      transitionBuilder: (ctx, anim, secondaryAnimation, child) {
+      pageBuilder: (ctx, _, __) => builder(ctx),
+      transitionBuilder: (ctx, anim, _, child) {
         final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
         return FadeTransition(
           opacity: curved,
@@ -184,7 +184,7 @@ class AppDialog {
   static ButtonStyle _outlined() => OutlinedButton.styleFrom(
         foregroundColor: AppTheme.text,
         minimumSize: const Size(0, 46),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+        side: BorderSide(color: Colors.white.withOpacity(0.2)),
         textStyle: const TextStyle(fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       );
@@ -240,14 +240,14 @@ class _AppDialogCard extends StatelessWidget {
               colors: [AppTheme.header, AppTheme.card],
             ),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: color.withValues(alpha: 0.45), width: 1.5),
+            border: Border.all(color: color.withOpacity(0.45), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
+                color: Colors.black.withOpacity(0.45),
                 blurRadius: 28,
                 offset: const Offset(0, 12),
               ),
-              BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 30),
+              BoxShadow(color: color.withOpacity(0.12), blurRadius: 30),
             ],
           ),
           child: Column(
@@ -277,9 +277,9 @@ class _AppDialogCard extends StatelessWidget {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
+                          color: color.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color.withValues(alpha: 0.35)),
+                          border: Border.all(color: color.withOpacity(0.35)),
                         ),
                         child: Text(
                           detail!,
@@ -312,10 +312,10 @@ class _AppDialogCard extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.25),
+                          color: Colors.black.withOpacity(0.25),
                           borderRadius: BorderRadius.circular(10),
                           border:
-                              Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                              Border.all(color: Colors.white.withOpacity(0.06)),
                         ),
                         child: SelectableText(
                           note!,
@@ -359,10 +359,10 @@ class _AppDialogCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [color.withValues(alpha: 0.9), color.withValues(alpha: 0.25)],
+          colors: [color.withOpacity(0.9), color.withOpacity(0.25)],
         ),
         boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 16, spreadRadius: 1),
+          BoxShadow(color: color.withOpacity(0.35), blurRadius: 16, spreadRadius: 1),
         ],
       ),
       child: Container(
@@ -436,10 +436,10 @@ class AppToast {
                 decoration: BoxDecoration(
                   color: AppTheme.header,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: color.withValues(alpha: 0.5)),
+                  border: Border.all(color: color.withOpacity(0.5)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
+                      color: Colors.black.withOpacity(0.35),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -450,7 +450,7 @@ class AppToast {
                     Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
+                        color: color.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(tone.icon, color: color, size: 18),

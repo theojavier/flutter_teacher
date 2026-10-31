@@ -46,12 +46,12 @@ class AppTheme {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [card.withValues(alpha: 0.9), card.withValues(alpha: 0.55)],
+        colors: [card.withOpacity(0.9), card.withOpacity(0.55)],
       ),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      border: Border.all(color: Colors.white.withOpacity(0.06)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.2),
+          color: Colors.black.withOpacity(0.2),
           blurRadius: 12,
           offset: const Offset(0, 6),
         ),
@@ -70,7 +70,7 @@ class AppTheme {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.25),
+          color: Colors.black.withOpacity(0.25),
           blurRadius: 16,
           offset: const Offset(0, 8),
         ),
@@ -89,11 +89,11 @@ class AppTheme {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: 0.9), accent.withValues(alpha: 0.25)],
+          colors: [accent.withOpacity(0.9), accent.withOpacity(0.25)],
         ),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.35),
+            color: accent.withOpacity(0.35),
             blurRadius: 14,
             spreadRadius: 1,
           ),
@@ -115,7 +115,7 @@ class AppTheme {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
+        color: Colors.black.withOpacity(0.25),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -144,7 +144,7 @@ class AppTheme {
 
     return InputDecoration(
       filled: true,
-      fillColor: Colors.black.withValues(alpha: 0.22),
+      fillColor: Colors.black.withOpacity(0.22),
       labelText: label,
       helperText: helper,
       helperStyle: const TextStyle(color: mutedText),
@@ -153,8 +153,8 @@ class AppTheme {
       errorStyle: const TextStyle(color: error),
       prefixIcon: icon == null ? null : Icon(icon, color: mutedText, size: 20),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: border(Colors.white.withValues(alpha: 0.12)),
-      enabledBorder: border(Colors.white.withValues(alpha: 0.12)),
+      border: border(Colors.white.withOpacity(0.12)),
+      enabledBorder: border(Colors.white.withOpacity(0.12)),
       focusedBorder: border(accent, 1.5),
       errorBorder: border(error),
       focusedErrorBorder: border(error, 1.5),
@@ -168,7 +168,7 @@ class AppTheme {
     return ElevatedButton.styleFrom(
       backgroundColor: color,
       foregroundColor: foreground,
-      disabledBackgroundColor: color.withValues(alpha: 0.4),
+      disabledBackgroundColor: color.withOpacity(0.4),
       elevation: 0,
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -195,7 +195,7 @@ class AppTheme {
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.15),
+              color: accent.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 16, color: accent),
@@ -211,7 +211,7 @@ class AppTheme {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+            child: Container(height: 1, color: Colors.white.withOpacity(0.08)),
           ),
         ],
       ),
@@ -234,7 +234,7 @@ class AppTheme {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: color),
@@ -272,7 +272,7 @@ class AppTheme {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.15),
+              color: accent.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: accent, size: 28),
@@ -327,13 +327,13 @@ class AppTheme {
               columnWidths: columnWidths,
               border: TableBorder(
                 horizontalInside: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: Colors.white.withOpacity(0.06),
                 ),
               ),
               children: [
                 TableRow(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.22),
+                    color: Colors.black.withOpacity(0.22),
                   ),
                   children: [
                     for (final h in headers)
@@ -344,7 +344,7 @@ class AppTheme {
                   TableRow(
                     decoration: BoxDecoration(
                       color: i.isOdd
-                          ? Colors.white.withValues(alpha: 0.03)
+                          ? Colors.white.withOpacity(0.03)
                           : Colors.transparent,
                     ),
                     children: rows[i],
@@ -371,9 +371,9 @@ class AppTheme {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
+            color: color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.35)),
+            border: Border.all(color: color.withOpacity(0.35)),
           ),
           child: Text(
             label,
@@ -393,7 +393,7 @@ class AppTheme {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -427,11 +427,11 @@ class AppTheme {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: 0.9), accent.withValues(alpha: 0.25)],
+          colors: [accent.withOpacity(0.9), accent.withOpacity(0.25)],
         ),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.35),
+            color: accent.withOpacity(0.35),
             blurRadius: 14,
             spreadRadius: 1,
           ),

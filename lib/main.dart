@@ -16,7 +16,7 @@ import 'pages/teacher/exam_monitoring_page.dart';
 import 'pages/teacher/teacher_monitoring_page.dart';
 import 'pages/teacher/teacher_exams_page.dart';
 import 'pages/teacher/student_management_page.dart';
-import 'pages/teacher/teacher_dashboard_page.dart';
+import 'pages/teacher/teacher_dashboard_page.dart' hide ResponsiveScaffold;
 import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
 import 'pages/teacher/exam_clips_page.dart';
 
@@ -93,25 +93,20 @@ class _MyAppState extends State<MyApp> {
       initialLocation: '/login',
 
       redirect: (context, state) {
-        final user = FirebaseAuth.instance.currentUser;
-        final path = state.matchedLocation;
-        final authRoute = path == '/login' || path == '/forgot';
+        final loggedIn = FirebaseAuth.instance.currentUser != null;
+        final path = state.uri.path;
 
-        // A logged-out user may still briefly be seen as null during web auth
-        // restoration. Keep auth routes accessible, but prevent any protected
-        // route from redirecting back to /login after the user is already known.
-        if (user == null) {
-          if (authRoute || path == '/') {
-            return null;
-          }
+        final loggingIn = path == '/login' || path == '/forgot';
+
+        if (path == '/') {
+          return loggedIn ? '/teacher-dashboard' : '/login';
+        }
+
+        if (!loggedIn && !loggingIn) {
           return '/login';
         }
 
-        if (path == '/') {
-          return '/teacher-dashboard';
-        }
-
-        if (authRoute) {
+        if (loggedIn && loggingIn) {
           return '/teacher-dashboard';
         }
 
@@ -143,16 +138,10 @@ class _MyAppState extends State<MyApp> {
             final location = state.uri.path;
             int index = 0;
 
-            if (location.startsWith('/teacher-dashboard')) {
-              index = 0;
-            }
+            if (location.startsWith('/teacher-dashboard')) index = 0;
             if (location.startsWith('/teacher-exams') ||
-                location.startsWith('/exam-clips')) {
-              index = 1;
-            }
-            if (location.startsWith('/teacher-monitoring')) {
-              index = 2;
-            }
+    location.startsWith('/exam-clips')) index = 1;
+            if (location.startsWith('/teacher-monitoring')) index = 2;
 
             return ResponsiveScaffold(
               initialIndex: index,

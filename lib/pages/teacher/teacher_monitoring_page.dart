@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../helpers/app_theme.dart';
+import '../../helpers/AppTheme.dart';
 
 class TeacherMonitoringPage extends StatefulWidget {
   final String teacherId;
@@ -93,7 +93,7 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: AppTheme.accent.withValues(alpha: 0.12),
+              color: AppTheme.accent.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -204,7 +204,7 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
                       color: AppTheme.bg,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppTheme.accent.withValues(alpha: 0.08),
+                        color: AppTheme.accent.withOpacity(0.08),
                       ),
                     ),
                     child: Row(
@@ -251,8 +251,8 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isStopped
-              ? Colors.redAccent.withValues(alpha: 0.30)
-              : AppTheme.accent.withValues(alpha: 0.08),
+              ? Colors.redAccent.withOpacity(0.30)
+              : AppTheme.accent.withOpacity(0.08),
         ),
       ),
       child: Column(
@@ -306,7 +306,7 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
               decoration: BoxDecoration(
                 color: AppTheme.header,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.accent.withValues(alpha: 0.08)),
+                border: Border.all(color: AppTheme.accent.withOpacity(0.08)),
               ),
               child: Row(
                 children: [
@@ -404,7 +404,7 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: iconColor.withValues(alpha: 0.12),
+        color: iconColor.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
@@ -436,9 +436,9 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: color.withOpacity(0.10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
+        border: Border.all(color: color.withOpacity(0.20)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -463,7 +463,7 @@ class _TeacherMonitoringPageState extends State<TeacherMonitoringPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

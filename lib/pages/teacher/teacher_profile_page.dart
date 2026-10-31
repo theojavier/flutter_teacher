@@ -104,7 +104,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
+                    color: Colors.black.withOpacity(0.25),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -197,13 +197,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            _accentColor.withValues(alpha: 0.9),
-            _accentColor.withValues(alpha: 0.25),
+            _accentColor.withOpacity(0.9),
+            _accentColor.withOpacity(0.25),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: _accentColor.withValues(alpha: 0.35),
+            color: _accentColor.withOpacity(0.35),
             blurRadius: blur,
             spreadRadius: 1,
           ),
@@ -245,7 +245,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
+            color: Colors.black.withOpacity(0.25),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -285,7 +285,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.25),
+                  color: Colors.black.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
@@ -341,7 +341,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ? Image.network(
                             imageUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => fallbackAvatar,
+                            errorBuilder: (_, __, ___) => fallbackAvatar,
                           )
                         : fallbackAvatar,
                   ),
@@ -432,7 +432,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Container(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+          child: Container(height: 1, color: Colors.white.withOpacity(0.08)),
         ),
       ],
     );
@@ -478,12 +478,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_cardColor.withValues(alpha: 0.9), _cardColor.withValues(alpha: 0.55)],
+          colors: [_cardColor.withOpacity(0.9), _cardColor.withOpacity(0.55)],
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: Colors.black.withOpacity(0.2),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -513,12 +513,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
       margin: const EdgeInsets.symmetric(vertical: 2),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: shaded ? Colors.white.withValues(alpha: 0.03) : Colors.transparent,
+        color: shaded ? Colors.white.withOpacity(0.03) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(row.icon, size: 16, color: _accentColor.withValues(alpha: 0.8)),
+          Icon(row.icon, size: 16, color: _accentColor.withOpacity(0.8)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
