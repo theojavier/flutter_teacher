@@ -4,12 +4,14 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   cloud_firestore
+  desktop_drop
   file_selector_windows
+  firebase_app_check
   firebase_auth
   firebase_core
   firebase_database
   firebase_storage
-  flutter_webrtc
+  flutter_secure_storage_windows
   url_launcher_windows
 )
 

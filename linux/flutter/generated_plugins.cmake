@@ -3,8 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_drop
   file_selector_linux
-  flutter_webrtc
+  flutter_secure_storage_linux
   url_launcher_linux
 )
 

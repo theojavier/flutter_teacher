@@ -1,6 +1,68 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+const Color _ink = Color(0xFF111217);
+const Color _inkSoft = Color(0xFF1D1D23);
+const Color _inkLine = Color(0xFF37373D);
+const Color _inkHover = Color(0xFF28282F);
+const Color _muted = Color(0xFFA1A1AA);
+const Color _blue = Color(0xFF153CFF);
+const Color _blueLight = Color(0xFF9DB0FF);
+
+String _initials(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return 'T';
+  return (parts.first[0] + (parts.length > 1 ? parts.last[0] : ''))
+      .toUpperCase();
+}
+
+class _TeacherAvatar extends StatelessWidget {
+  final String? url;
+  final String name;
+  final double size;
+  final double fontSize;
+
+  const _TeacherAvatar({
+    required this.url,
+    required this.name,
+    required this.size,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(color: _blue, shape: BoxShape.circle),
+      child: url != null && url!.isNotEmpty
+          ? Image.network(
+              url!,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initialsLabel(),
+            )
+          : _initialsLabel(),
+    );
+  }
+
+  Widget _initialsLabel() => Text(
+    _initials(name),
+    style: TextStyle(
+      color: Colors.white,
+      fontSize: fontSize,
+      fontWeight: FontWeight.w800,
+    ),
+  );
+}
+
 class ProfileMenuTrigger extends StatefulWidget {
   final String? avatarUrl;
   final String name;
@@ -28,26 +90,32 @@ class _ProfileMenuTriggerState extends State<ProfileMenuTrigger> {
 
   Future<void> _openMenu() async {
     setState(() => _isOpen = true);
+    final size = MediaQuery.of(context).size;
+    final topInset = MediaQuery.of(context).padding.top;
+    final wide = size.width >= 900;
 
-    await showDialog(
+    await showDialog<void>(
       context: context,
-      barrierColor: Colors.black12,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.only(top: 64, right: 20),
+      barrierColor: Colors.black26,
+      builder: (dialogContext) => Dialog(
+        insetPadding: EdgeInsets.only(
+          top: wide ? 68 : topInset + 58,
+          right: wide ? 28 : 12,
+          left: 12,
+        ),
         alignment: Alignment.topRight,
         backgroundColor: Colors.transparent,
+        elevation: 0,
         child: ProfileMenuPanel(
           avatarUrl: widget.avatarUrl,
           name: widget.name,
           idNumber: widget.idNumber,
           onViewProfile: () {
-            Navigator.of(ctx).pop();
+            Navigator.of(dialogContext).pop();
             widget.onViewProfile();
           },
           onChangePassword: () {
-            Navigator.of(ctx).pop();
-            // Use the trigger's own context (still mounted after the
-            // menu dialog closes) rather than the menu's ctx.
+            Navigator.of(dialogContext).pop();
             if (widget.onChangePassword != null) {
               widget.onChangePassword!();
             } else {
@@ -55,7 +123,7 @@ class _ProfileMenuTriggerState extends State<ProfileMenuTrigger> {
             }
           },
           onLogout: () {
-            Navigator.of(ctx).pop();
+            Navigator.of(dialogContext).pop();
             widget.onLogout();
           },
         ),
@@ -74,7 +142,7 @@ class _ProfileMenuTriggerState extends State<ProfileMenuTrigger> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           // The light "cylinder" pill sitting on the dark navy app bar.
-          color: Colors.white.withValues(alpha: 0.18),
+          color: Colors.white.withOpacity(0.18),
           borderRadius: BorderRadius.circular(30),
         ),
         child: Row(
@@ -133,9 +201,9 @@ class ProfileMenuPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final panelWidth = (MediaQuery.of(context).size.width * 0.5).clamp(
-      220.0,
-      260.0,
+    final panelWidth = (MediaQuery.of(context).size.width - 24).clamp(
+      280.0,
+      300.0,
     );
 
     return Material(
@@ -144,11 +212,12 @@ class ProfileMenuPanel extends StatelessWidget {
         width: panelWidth,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: _ink,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _inkLine),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
+              color: Colors.black.withOpacity(0.18),
               blurRadius: 20,
               offset: const Offset(0, 12),
             ),
@@ -157,115 +226,101 @@ class ProfileMenuPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header gradient — matches the app's navy theme (same family
-            // as topColor / the desktop sidebar in responsive_scaffold.dart).
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF0B2036), Color(0xFF1E5B8C)],
-                ),
+                color: _inkSoft,
+                border: Border(bottom: BorderSide(color: _inkLine)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              child: Row(
                 children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.white24,
-                        backgroundImage:
-                            avatarUrl != null && avatarUrl!.isNotEmpty
-                            ? NetworkImage(avatarUrl!)
-                            : null,
-                        child: (avatarUrl == null || avatarUrl!.isEmpty)
-                            ? const Icon(
-                                Icons.person,
-                                size: 22,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 11,
-                          height: 11,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2E86C1),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                        ),
-                      ),
-                    ],
+                  _TeacherAvatar(
+                    url: avatarUrl,
+                    name: name,
+                    size: 44,
+                    fontSize: 13,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    name.toUpperCase(),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      height: 1.25,
-                    ),
-                  ),
-                  if (idNumber != null && idNumber!.isNotEmpty) ...[
-                    const SizedBox(height: 5),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.badge_outlined,
-                          size: 13,
-                          color: Colors.white70,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
-                          idNumber!,
+                          name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11.5,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            height: 1.25,
                           ),
+                        ),
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.badge_outlined,
+                              size: 13,
+                              color: _muted,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                idNumber?.isNotEmpty == true
+                                    ? idNumber!
+                                    : 'Faculty member',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: _muted,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
-
-            // Menu items.
+            const SizedBox(height: 6),
             _ProfileMenuTile(
               icon: Icons.person_outline,
-              iconColor: const Color(0xFF0F2B45),
-              iconBg: const Color(0xFFE7ECF2),
-              label: 'View Profile',
+              iconColor: Colors.white,
+              iconBg: _inkSoft,
+              label: 'View profile',
               onTap: onViewProfile,
             ),
-            const Divider(height: 1, indent: 18, endIndent: 18),
+            const Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: _inkLine,
+            ),
             _ProfileMenuTile(
               icon: Icons.lock_outline,
-              iconColor: const Color(0xFF3B6FE0),
-              iconBg: const Color(0xFFE4EBFC),
-              label: 'Change Password',
+              iconColor: Colors.white,
+              iconBg: _inkSoft,
+              label: 'Change password',
               onTap: onChangePassword,
             ),
-            const Divider(height: 1, indent: 18, endIndent: 18),
+            const Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: _inkLine,
+            ),
             _ProfileMenuTile(
               icon: Icons.logout,
-              iconColor: const Color(0xFFE0533B),
-              iconBg: const Color(0xFFFBE7E3),
-              label: 'Logout',
-              labelColor: const Color(0xFFE0533B),
+              iconColor: _blueLight,
+              iconBg: _blue.withOpacity(0.16),
+              iconBorder: _blue.withOpacity(0.35),
+              label: 'Log out',
+              labelColor: _blueLight,
               onTap: onLogout,
             ),
             const SizedBox(height: 6),
@@ -280,6 +335,7 @@ class _ProfileMenuTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
+  final Color iconBorder;
   final String label;
   final Color? labelColor;
   final VoidCallback onTap;
@@ -290,6 +346,7 @@ class _ProfileMenuTile extends StatelessWidget {
     required this.iconBg,
     required this.label,
     required this.onTap,
+    this.iconBorder = _inkLine,
     this.labelColor,
   });
 
@@ -297,24 +354,31 @@ class _ProfileMenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      hoverColor: _inkHover,
+      highlightColor: _inkHover,
+      splashColor: _inkHover,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
             Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-              child: Icon(icon, size: 15, color: iconColor),
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: iconBorder),
+              ),
+              child: Icon(icon, size: 16, color: iconColor),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: labelColor ?? const Color(0xFF16324A),
+                  color: labelColor ?? Colors.white,
                 ),
               ),
             ),
@@ -325,15 +389,10 @@ class _ProfileMenuTile extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------
-// Built-in "Change Password" fallback. Same behavior as before (send a
-// Firebase password reset email to whoever is currently signed in) —
-// only the pop-up's look has changed, now matching the dark navy /
-// accent-blue theme used across LoginPage and ForgotPage.
-// ---------------------------------------------------------------------
 Future<void> confirmChangePassword(BuildContext context) {
   return showDialog(
     context: context,
+    barrierColor: Colors.black54,
     builder: (_) => const _ChangePasswordDialog(),
   );
 }
@@ -346,16 +405,6 @@ class _ChangePasswordDialog extends StatefulWidget {
 }
 
 class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
-  // Same shared palette as LoginPage / ForgotPage.
-  static const Color _headerColor = Color(0xFF0F2B45);
-  static const Color _headerColorLight = Color(0xFF17456F);
-  static const Color _cardColor = Color(0xFF0F3B61);
-  static const Color _textColor = Color(0xFFE6F0F8);
-  static const Color _mutedTextColor = Color(0xFF9FB0C3);
-  static const Color _accentColor = Color(0xFF3D8BFF);
-  static const Color _errorColor = Color(0xFFF87171);
-  static const Color _successColor = Color(0xFF4ADE80);
-
   bool _isSending = false;
   bool _sent = false;
   String? _errorMessage;
@@ -365,9 +414,9 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   Future<void> _sendResetEmail() async {
     final email = _email;
     if (email == null) {
-      setState(() {
-        _errorMessage = "No signed-in user found. Please log in again.";
-      });
+      setState(
+        () => _errorMessage = 'No signed-in user found. Please log in again.',
+      );
       return;
     }
 
@@ -379,12 +428,12 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       if (mounted) setState(() => _sent = true);
-    } on FirebaseAuthException catch (e) {
-      if (mounted) setState(() => _errorMessage = _messageFor(e));
+    } on FirebaseAuthException catch (error) {
+      if (mounted) setState(() => _errorMessage = _messageFor(error));
     } catch (_) {
       if (mounted) {
         setState(
-          () => _errorMessage = "Something went wrong. Please try again.",
+          () => _errorMessage = 'Something went wrong. Please try again.',
         );
       }
     } finally {
@@ -392,34 +441,35 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     }
   }
 
-  String _messageFor(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'too-many-requests':
-        return 'Too many attempts. Please wait a bit and try again.';
-      case 'network-request-failed':
-        return 'Network error. Check your connection and try again.';
-      case 'user-not-found':
-        return 'No account found for this email.';
-      default:
-        return e.message ?? 'Could not send reset email (${e.code}).';
-    }
-  }
+  String _messageFor(FirebaseAuthException error) => switch (error.code) {
+    'too-many-requests' =>
+      'Too many attempts. Please wait a bit and try again.',
+    'network-request-failed' =>
+      'Network error. Check your connection and try again.',
+    'user-not-found' => 'No account found for this email.',
+    _ => error.message ?? 'Could not send reset email (${error.code}).',
+  };
 
   @override
   Widget build(BuildContext context) {
     final email = _email;
-
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _ink,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _inkLine),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header zone — same gradient family as Login/Forgot.
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
@@ -437,9 +487,9 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       height: 56,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _accentColor.withValues(alpha: 0.15),
+                        color: _accentColor.withOpacity(0.15),
                         border: Border.all(
-                          color: _accentColor.withValues(alpha: 0.4),
+                          color: _accentColor.withOpacity(0.4),
                         ),
                       ),
                       child: const Icon(
@@ -501,10 +551,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           horizontal: 14,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.22),
+                          color: Colors.black.withOpacity(0.22),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: Colors.white.withOpacity(0.08),
                           ),
                         ),
                         child: Row(
@@ -537,7 +587,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: Colors.white.withOpacity(0.2),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -576,7 +626,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                                   backgroundColor: _accentColor,
                                   foregroundColor: Colors.white,
                                   disabledBackgroundColor: _accentColor
-                                      .withValues(alpha: 0.6),
+                                      .withOpacity(0.6),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
@@ -606,48 +656,38 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       ),
     );
   }
+}
 
-  Widget _buildBanner({
-    required String title,
-    required String message,
-    required Color color,
-    required IconData icon,
-  }) {
+class _PasswordNotice extends StatelessWidget {
+  final String title;
+  final String message;
+  final Color color;
+
+  const _PasswordNotice({
+    required this.title,
+    required this.message,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        color: color.withOpacity(0.12),
+        border: Border.all(color: color.withOpacity(0.35)),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _textColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    color: _mutedTextColor,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ],
-            ),
+          Text(
+            title,
+            style: TextStyle(color: color, fontWeight: FontWeight.w800),
           ),
+          const SizedBox(height: 3),
+          Text(message, style: const TextStyle(color: _muted, height: 1.5)),
         ],
       ),
     );

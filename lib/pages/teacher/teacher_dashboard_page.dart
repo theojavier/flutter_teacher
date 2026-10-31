@@ -2,11 +2,10 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '/helpers/app_theme.dart';
+import '/helpers/AppTheme.dart';
 
 // ---------- Data models ----------
 
@@ -49,8 +48,6 @@ class _DashboardData {
   final int examsThisWeek;
   final int upcomingExams;
   final List<String> ongoingExamIds;
-  final int totalFlagged; // NEW: all flagged, used by the card
-  final List<_FlaggedStudent> flagged; // only what the table shows
 
   const _DashboardData({
     required this.totalStudents,
@@ -60,17 +57,12 @@ class _DashboardData {
     required this.examsThisWeek,
     required this.upcomingExams,
     required this.ongoingExamIds,
-    required this.totalFlagged,
-    required this.flagged,
   });
-
-  int get flaggedStudents => totalFlagged; // was flagged.length
 }
-
-// ---------- Page ----------
 
 class TeacherDashboardPage extends StatefulWidget {
   final String teacherId;
+
   const TeacherDashboardPage({super.key, required this.teacherId});
 
   @override
@@ -79,16 +71,25 @@ class TeacherDashboardPage extends StatefulWidget {
 
 class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-  // uid -> display name (so we don't re-read users/{uid} on every refresh)
-  final Map<String, String> _nameCache = {};
   List<String> _presenceExamIds = const [];
   Stream<Map<String, int>>? _presenceStream;
+
+  Future<void> _openExamDialog(String examId, Map<String, dynamic> data) async {
+    final result = await ExamFormDialog.show(
+      context,
+      docId: examId,
+      existing: data,
+    );
+    if (!mounted || result == null) return;
+    if (result.openQuestions) {
+      context.go('/edit-question/${result.examId}');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bg,
+      backgroundColor: _dashboardPaper,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _db
             .collection('exams')
@@ -105,12 +106,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
           }
           if (!examSnapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(color: AppTheme.accent),
+              child: CircularProgressIndicator(color: _dashboardBlue),
             );
           }
 
           final exams = examSnapshot.data!.docs;
-
           return StreamBuilder<_DashboardData>(
             stream: _aggregateStreams(exams),
             builder: (context, snapshot) {
@@ -124,11 +124,12 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               }
               if (!snapshot.hasData) {
                 return const Center(
-                  child: CircularProgressIndicator(color: AppTheme.accent),
+                  child: CircularProgressIndicator(color: _dashboardBlue),
                 );
               }
               final data = snapshot.data!;
               return _buildMainContent(
+                exams,
                 data,
                 _presenceCounts(data.ongoingExamIds),
               );
@@ -142,43 +143,71 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   // ---------- Layout ----------
 
   Widget _buildMainContent(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> exams,
     _DashboardData data,
     Stream<Map<String, int>> presenceStream,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 850;
-        final pad = constraints.maxWidth < 500 ? 16.0 : 24.0;
+        final compact = constraints.maxWidth < 900;
+        final pad = constraints.maxWidth >= 920
+            ? 40.0
+            : constraints.maxWidth < 500
+            ? 16.0
+            : 24.0;
         final contentWidth = constraints.maxWidth - pad * 2;
-
-        final monitoring = _buildMonitoringPanel(data.flagged, contentWidth);
-        final status = _buildStatusPanel(data, presenceStream);
+        final recentWidth = compact ? contentWidth : (contentWidth - 16) * 0.64;
+        final wideTable = recentWidth >= 560;
 
         return AppTheme.noScrollbars(
           context,
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(pad),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHero(),
-                const SizedBox(height: 20),
-                _buildMetricCards(contentWidth, data, presenceStream),
-                const SizedBox(height: 24),
-                if (compact) ...[
-                  monitoring,
-                  const SizedBox(height: 16),
-                  status,
-                ] else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: monitoring),
-                      const SizedBox(width: 16),
-                      Expanded(child: status),
-                    ],
-                  ),
-              ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1500),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(pad, compact ? 24 : 38, pad, 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildPageHeading(compact),
+                    const SizedBox(height: 24),
+                    _buildHero(constraints.maxWidth - pad * 2),
+                    const SizedBox(height: 16),
+                    _buildMetricCards(contentWidth, data, presenceStream),
+                    const SizedBox(height: 16),
+                    if (compact) ...[
+                      _buildRecentExams(exams, wide: wideTable),
+                      const SizedBox(height: 16),
+                      _buildLiveActivity(data, presenceStream),
+                    ] else
+                      SizedBox(
+                        height: 520,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: 64,
+                              child: _buildRecentExams(
+                                exams,
+                                wide: wideTable,
+                                expand: true,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 36,
+                              child: _buildLiveActivity(
+                                data,
+                                presenceStream,
+                                expand: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
@@ -186,34 +215,268 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     );
   }
 
-  Widget _buildHero() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
-      child: Row(
+  Widget _buildPageHeading(bool compact) {
+    final actions = Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _dashboardButton(
+          label: 'View exams',
+          icon: Icons.arrow_outward_rounded,
+          onPressed: () => context.go('/teacher-exams'),
+        ),
+        _dashboardButton(
+          label: 'Live monitoring',
+          icon: Icons.sensors_outlined,
+          primary: true,
+          onPressed: () => context.go('/teacher-monitoring'),
+        ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '01 / FACULTY WORKSPACE',
+          style: TextStyle(
+            color: _dashboardBlue,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Your teaching workspace.',
+          style: TextStyle(
+            color: _dashboardInk,
+            fontSize: compact ? 34 : 46,
+            fontWeight: FontWeight.w800,
+            height: 1.08,
+          ),
+        ),
+        const SizedBox(height: 9),
+        const Text(
+          'Create assessments, follow exam activity, and review student flags.',
+          style: TextStyle(color: _dashboardMuted, fontSize: 13, height: 1.6),
+        ),
+        const SizedBox(height: 17),
+        actions,
+      ],
+    );
+  }
+
+  Widget _buildHero(double width) {
+    final compact = width < 720;
+    final copy = Padding(
+      padding: EdgeInsets.fromLTRB(
+        compact ? 22 : 34,
+        25,
+        compact ? 22 : 34,
+        26,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppTheme.appBarIcon(Icons.dashboard_rounded),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Teacher Dashboard',
+          Row(
+            children: [
+              Container(width: 8, height: 8, color: _dashboardBlue),
+              const SizedBox(width: 9),
+              const Expanded(
+                child: Text(
+                  'FOTS PLATFORM',
                   style: TextStyle(
-                    color: AppTheme.text,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    color: _dashboardInk,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.7,
                   ),
                 ),
-                const SizedBox(height: 6),
-                AppTheme.pill('LIVE EXAM MONITORING'),
-              ],
+              ),
+              const Text(
+                'TEACHER / 2026',
+                style: TextStyle(color: _dashboardMuted, fontSize: 9),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          const Divider(height: 1, color: _dashboardInk),
+          SizedBox(height: compact ? 24 : 36),
+          const Text(
+            'A SMARTER WAY TO TEACH',
+            style: TextStyle(
+              color: _dashboardBlue,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
             ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Create better.\nAssess smarter.',
+            style: TextStyle(
+              color: _dashboardInk,
+              fontSize: compact ? 42 : 58,
+              fontWeight: FontWeight.w800,
+              height: 1.02,
+            ),
+          ),
+          const SizedBox(height: 17),
+          const Text(
+            'Design assessments, keep an eye on sessions, and make informed decisions from your faculty workspace.',
+            style: TextStyle(
+              color: _dashboardMuted,
+              fontSize: 13,
+              height: 1.65,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _dashboardButton(
+                label: 'Create new exam',
+                icon: Icons.add_rounded,
+                primary: true,
+                onPressed: () => context.go('/teacher-exams'),
+              ),
+              _dashboardButton(
+                label: 'Open monitoring',
+                icon: Icons.arrow_forward_rounded,
+                onPressed: () => context.go('/teacher-monitoring'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 23),
+          const Divider(height: 1, color: _dashboardLine),
+          const SizedBox(height: 13),
+          const Row(
+            children: [
+              Text(
+                'FACULTY ENGINE',
+                style: TextStyle(
+                  color: _dashboardInk,
+                  fontSize: 9,
+                  letterSpacing: 0.7,
+                ),
+              ),
+              Spacer(),
+              Text(
+                'ASSESSMENT / MONITORING',
+                style: TextStyle(color: _dashboardMuted, fontSize: 9),
+              ),
+            ],
           ),
         ],
       ),
+    );
+
+    final poster = Container(
+      
+      height: compact ? 320 : null,
+       constraints: BoxConstraints(minHeight: compact ? 300 : 420),
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: _dashboardBlue,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_dashboardBlue, Color(0xFF0B2ABF)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Text(
+                'FOTS / TEACHER SPACE',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  letterSpacing: 0.7,
+                ),
+              ),
+              Spacer(),
+              Text(
+                '[ FACULTY ]',
+                style: TextStyle(color: Colors.white70, fontSize: 9),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0x80FFFFFF)),
+          const Spacer(),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Transform.rotate(
+              angle: 0.07,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                color: _dashboardInk,
+                child: const Text(
+                  'TEACH WITH\nCONFIDENCE.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    height: 1.05,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+          const Divider(height: 1, color: Color(0x80FFFFFF)),
+          const SizedBox(height: 15),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  'MAKE EVERY\nEXAM COUNT.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 31 : 43,
+                    fontWeight: FontWeight.w900,
+                    height: 0.98,
+                  ),
+                ),
+              ),
+              const Text(
+                '2026\n002 / 003',
+                textAlign: TextAlign.right,
+                style: TextStyle(color: Colors.white, fontSize: 9, height: 1.6),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: const Color(0xFFD6D9D7)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: compact
+          ? Column(children: [copy, poster])
+          : IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 55, child: copy),
+                  Expanded(flex: 45, child: poster),
+                ],
+              ),
+            ),
     );
   }
 
@@ -229,58 +492,41 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         final taking = presenceSnapshot.hasError
             ? null
             : (presenceSnapshot.data?['taking'] ?? 0);
-        const spacing = 16.0;
-        final cardWidth = (width - spacing * 2) / 3;
-        final takingColor = data.ongoingExams > 0
-            ? AppTheme.success
-            : AppTheme.mutedText;
-
-        Widget card({
-          required IconData icon,
-          required String title,
-          required String value,
-          required Color color,
-        }) {
-          return SizedBox(
-            width: cardWidth,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: AppTheme.cardDecoration(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, size: 18, color: color),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.text,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.mutedText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+        const spacing = 12.0;
+        final columns = width >= 950
+            ? 4
+            : width >= 580
+            ? 2
+            : 1;
+        final cardWidth = (width - spacing * (columns - 1)) / columns;
+        final cards = [
+          _metricCard(
+            title: 'Your exams',
+            value: '${data.totalExams}',
+            caption: '${data.upcomingExams} upcoming',
+            icon: Icons.assignment_outlined,
+          ),
+          _metricCard(
+            title: 'Active exams',
+            value: '${data.ongoingExams}',
+            caption: 'Running now',
+            icon: Icons.view_agenda_outlined,
+            tone: _MetricTone.dark,
+          ),
+          _metricCard(
+            title: 'Taking exam now',
+            value: taking?.toString() ?? '--',
+            caption: 'Live student presence',
+            icon: Icons.track_changes_rounded,
+            tone: _MetricTone.wash,
+          ),
+          _metricCard(
+            title: 'Active attempts',
+            value: '${data.totalStudents}',
+            caption: 'Across active exams',
+            icon: Icons.edit_note_rounded,
+          ),
+        ];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,43 +543,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               spacing: spacing,
               runSpacing: spacing,
               children: [
-                card(
-                  icon: Icons.assignment_outlined,
-                  title: 'My Exams',
-                  value: '${data.totalExams}',
-                  color: AppTheme.accent,
-                ),
-                card(
-                  icon: Icons.play_circle_outline,
-                  title: 'Ongoing Exams',
-                  value: '${data.ongoingExams}',
-                  color: Colors.orange,
-                ),
-
-                card(
-                  icon: Icons.edit_note_rounded,
-                  title: 'Taking Exam Now',
-                  value: taking?.toString() ?? '—',
-                  color: takingColor,
-                ),
-                card(
-                  icon: Icons.today_outlined,
-                  title: 'Exams Today',
-                  value: '${data.examsToday}',
-                  color: AppTheme.accent,
-                ),
-                card(
-                  icon: Icons.people_outline,
-                  title: 'Attempts in Live Exams',
-                  value: '${data.totalStudents}',
-                  color: AppTheme.success,
-                ),
-                card(
-                  icon: Icons.warning_amber_rounded,
-                  title: 'Flagged Students',
-                  value: '${data.flaggedStudents}',
-                  color: AppTheme.error,
-                ),
+                for (final card in cards)
+                  SizedBox(width: cardWidth, child: card),
               ],
             ),
           ],
@@ -342,140 +553,129 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     );
   }
 
-  Widget _buildMonitoringPanel(List<_FlaggedStudent> flagged, double width) {
-    Widget body;
+  Widget _metricCard({
+    required String title,
+    required String value,
+    required String caption,
+    required IconData icon,
+    _MetricTone tone = _MetricTone.light,
+  }) {
+    final dark = tone == _MetricTone.dark;
+    final wash = tone == _MetricTone.wash;
+    final background = dark
+        ? _dashboardInk
+        : wash
+        ? _dashboardBlueWash
+        : Colors.white;
+    final border = dark
+        ? _dashboardInk
+        : wash
+        ? const Color(0xFFD5DCFF)
+        : _dashboardLine;
+    final titleColor = dark ? Colors.white70 : _dashboardMuted;
+    final valueColor = dark ? Colors.white : _dashboardInk;
+    final captionColor = dark ? Colors.white54 : _dashboardMuted;
+    final iconBackground = dark
+        ? Colors.white.withOpacity(0.14)
+        : wash
+        ? Colors.white
+        : _dashboardBlueWash;
+    final iconColor = dark ? Colors.white : _dashboardBlue;
 
-    if (flagged.isEmpty) {
-      body = AppTheme.emptyCard(
-        Icons.verified_user_outlined,
-        'No flagged students right now',
-      );
-    } else {
-      body = LayoutBuilder(
-        builder: (context, box) {
-          final compact = box.maxWidth < 520;
-
-          final rows = <List<Widget>>[
-            for (final s in flagged)
-              [
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 6 : 8,
-                    vertical: 8,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppTheme.text,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        s.examTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppTheme.mutedText,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+    return Container(
+      constraints: const BoxConstraints(minHeight: 146),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: titleColor, fontSize: 12),
                 ),
-
-                AppTheme.tableCell(
-                  s.cheatingCount.toString(),
-                  color: AppTheme.error,
-                  weight: FontWeight.bold,
+              ),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                AppTheme.statusChip(s.status, successValue: 'completed'),
-                Center(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.accent,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 36),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () => _showReviewDialog(s),
-                    child: const Text('Review'),
-                  ),
-                ),
-              ],
-          ];
-
-          return AppTheme.tableCard(
-            headers: const ['STUDENT / EXAM', 'STRIKES', 'STATUS', 'ACTION'],
-            columnWidths: {
-              0: const FlexColumnWidth(2.2),
-              1: const FlexColumnWidth(1.1),
-              2: const FlexColumnWidth(1.6),
-              3: const FlexColumnWidth(1.6),
-            },
-            rows: rows,
-            maxHeight: 420,
-          );
-        },
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AppTheme.sectionHeader(Icons.sensors, 'Real-time Monitoring & Flags'),
-        body,
-      ],
+                child: Icon(icon, color: iconColor, size: 17),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+            ),
+          ),
+          Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: captionColor, fontSize: 10),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatusPanel(
-    _DashboardData data,
-    Stream<Map<String, int>> presenceStream,
-  ) {
-    final takingColor = data.ongoingExams > 0
-        ? AppTheme.success
-        : AppTheme.mutedText;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+  Widget _dashboardButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool primary = false,
+  }) {
+    final foreground = primary ? Colors.white : _dashboardInk;
+    return Material(
+      color: primary ? _dashboardBlue : Colors.white,
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: primary ? _dashboardBlue : _dashboardLine,
+            ),
+          ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: takingColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.groups_2_outlined,
-                  size: 16,
-                  color: takingColor,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Active Taking Status',
+              Text(
+                label,
                 style: TextStyle(
-                  color: AppTheme.text,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
+                  color: foreground,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+              const SizedBox(width: 9),
+              Icon(
+                icon,
+                color: primary ? Colors.white : _dashboardBlue,
+                size: 16,
               ),
             ],
           ),
@@ -624,7 +824,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             decoration: BoxDecoration(
               color: AppTheme.bg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -639,9 +839,9 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: AppTheme.text,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          color: _dashboardInk,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -678,10 +878,10 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withValues(alpha: 0.10),
+                    color: AppTheme.accent.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.accent.withValues(alpha: 0.25),
+                      color: AppTheme.accent.withOpacity(0.25),
                     ),
                   ),
                   child: const Text(
@@ -691,8 +891,12 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     style: TextStyle(color: AppTheme.text, fontSize: 12.5),
                   ),
                 ),
-                const SizedBox(height: 14),
-                Flexible(child: _buildClipList(s, selectedKind)),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _dashboardMuted,
+                  size: 19,
+                ),
               ],
             ),
           ),
@@ -701,10 +905,10 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     );
   }
 
-  Widget _clipKindButton({
-    required _ClipKind kind,
-    required bool selected,
-    required VoidCallback onPressed,
+  Widget _buildLiveActivity(
+    _DashboardData data,
+    Stream<Map<String, int>> presenceStream, {
+    bool expand = false,
   }) {
     final color = selected ? AppTheme.accent : AppTheme.mutedText;
     return Tooltip(
@@ -715,12 +919,12 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         style: IconButton.styleFrom(
           foregroundColor: color,
           backgroundColor: selected
-              ? AppTheme.accent.withValues(alpha: 0.15)
+              ? AppTheme.accent.withOpacity(0.15)
               : Colors.transparent,
           side: BorderSide(
             color: selected
-                ? AppTheme.accent.withValues(alpha: 0.45)
-                : Colors.white.withValues(alpha: 0.12),
+                ? AppTheme.accent.withOpacity(0.45)
+                : Colors.white.withOpacity(0.12),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -770,8 +974,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         return ListView.separated(
           shrinkWrap: true,
           itemCount: clips.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) => _buildClipTile(clips[index].data(), kind),
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, i) => _buildClipTile(clips[i].data(), kind),
         );
       },
     );
@@ -835,7 +1039,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -876,37 +1080,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
 
   // ---------- Data logic ----------
 
-  Future<String> _resolveName(
-    String uid,
-    Map<String, dynamic> studentData,
-  ) async {
-    final inDoc =
-        (studentData['studentName'] ??
-                studentData['name'] ??
-                studentData['fullName'])
-            ?.toString();
-    if (inDoc != null && inDoc.trim().isNotEmpty) {
-      _nameCache[uid] = inDoc;
-      return inDoc;
-    }
-
-    final cached = _nameCache[uid];
-    if (cached != null) return cached;
-
-    try {
-      final userDoc = await _db.collection('users').doc(uid).get();
-      final u = userDoc.data();
-      final n = (u?['name'] ?? u?['fullName'] ?? u?['displayName'])?.toString();
-      if (n != null && n.trim().isNotEmpty) {
-        _nameCache[uid] = n;
-        return n;
-      }
-    } catch (_) {}
-
-    _nameCache[uid] = uid;
-    return uid;
-  }
-
   Stream<_DashboardData> _aggregateStreams(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> exams,
   ) async* {
@@ -921,9 +1094,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       int examsToday = 0;
       int examsThisWeek = 0;
       int upcomingExams = 0;
-      int totalFlagged = 0;
 
-      final flaggedStudents = <_FlaggedStudent>[];
       final ongoingExamIds = <String>[];
 
       for (final exam in exams) {
@@ -966,45 +1137,15 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         }
         if (monitoringActive) ongoingExamIds.add(exam.id);
 
-        final studentSnap = await _db
-            .collection('examResults')
-            .doc(exam.id)
-            .collection('students')
-            .get();
-        if (monitoringActive) totalStudents += studentSnap.size;
-
-        final examTitle =
-            (examData['title'] ??
-                    examData['examTitle'] ??
-                    examData['name'] ??
-                    'Exam')
-                .toString();
-
-        final examFlagged = <_FlaggedStudent>[];
-        for (final doc in studentSnap.docs) {
-          final d = doc.data();
-          final count = (d['cheatingCount'] as num?)?.toInt() ?? 0;
-          if (count <= 0) continue;
-
-          examFlagged.add(
-            _FlaggedStudent(
-              examId: exam.id,
-              examTitle: examTitle,
-              uid: doc.id,
-              name: await _resolveName(doc.id, d),
-              cheatingCount: count,
-              status: (d['status'] ?? 'in-progress').toString(),
-              isPc: examData['isPc'] is bool ? examData['isPc'] as bool : true,
-            ),
-          );
+        if (monitoringActive) {
+          final studentSnapshot = await _db
+              .collection('examResults')
+              .doc(exam.id)
+              .collection('students')
+              .get();
+          totalStudents += studentSnapshot.size;
         }
-        totalFlagged += examFlagged.length;
-        flaggedStudents.addAll(examFlagged);
       }
-
-      flaggedStudents.sort(
-        (a, b) => b.cheatingCount.compareTo(a.cheatingCount),
-      );
 
       yield _DashboardData(
         totalStudents: totalStudents,
@@ -1014,8 +1155,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         examsThisWeek: examsThisWeek,
         upcomingExams: upcomingExams,
         ongoingExamIds: ongoingExamIds,
-        totalFlagged: totalFlagged,
-        flagged: flaggedStudents,
       );
 
       await Future.delayed(const Duration(seconds: 5));

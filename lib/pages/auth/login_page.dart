@@ -1,4 +1,5 @@
-import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,15 +15,16 @@ class TeacherLoginPage extends StatefulWidget {
 }
 
 class _TeacherLoginPageState extends State<TeacherLoginPage> {
-  // Shared theme palette (matches admin/student design)
-  static const Color _bgColor = Color(0xFF0B1220);
-  static const Color _headerColor = Color(0xFF0F2B45);
-  static const Color _headerColorLight = Color(0xFF17456F);
-  static const Color _cardColor = Color(0xFF0F3B61);
-  static const Color _textColor = Color(0xFFE6F0F8);
-  static const Color _mutedTextColor = Color(0xFF9FB0C3);
-  static const Color _accentColor = Color(0xFF3D8BFF);
-  static const Color _errorColor = Color(0xFFF87171);
+  static const Color _paper = Color(0xFFF7F8F6);
+  static const Color _ink = Color(0xFF111217);
+  static const Color _artBg = Color(0xFF101215);
+  static const Color _border = Color(0xFFD9DDDA);
+  static const Color _muted = Color(0xFF666C6C);
+  static const Color _footMuted = Color(0xFF828783);
+  static const Color _accentColor = Color(0xFF153CFF);
+  static const Color _accentHover = Color(0xFF0F2DB9);
+  static const Color _errorText = Color(0xFFA42237);
+  static const double _breakpoint = 790;
 
   final TextEditingController teacherIdController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -161,10 +163,6 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isFormFilled =
-        teacherIdController.text.trim().isNotEmpty &&
-        passwordController.text.trim().isNotEmpty;
-
     return Scaffold(
       backgroundColor: _bgColor,
       body: Stack(
@@ -181,8 +179,8 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _accentColor.withValues(alpha: 0.18),
-                      _accentColor.withValues(alpha: 0.0),
+                      _accentColor.withOpacity(0.18),
+                      _accentColor.withOpacity(0.0),
                     ],
                   ),
                 ),
@@ -201,7 +199,7 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
+                          color: Colors.black.withOpacity(0.25),
                           blurRadius: 16,
                           offset: const Offset(0, 8),
                         ),
@@ -250,13 +248,13 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _accentColor.withValues(alpha: 0.9),
-                  _accentColor.withValues(alpha: 0.25),
+                  _accentColor.withOpacity(0.9),
+                  _accentColor.withOpacity(0.25),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _accentColor.withValues(alpha: 0.35),
+                  color: _accentColor.withOpacity(0.35),
                   blurRadius: 14,
                   spreadRadius: 1,
                 ),
@@ -288,7 +286,7 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: Colors.black.withOpacity(0.25),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text(
@@ -319,7 +317,7 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: _accentColor.withValues(alpha: 0.15),
+                  color: _accentColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -341,7 +339,7 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
               Expanded(
                 child: Container(
                   height: 1,
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: Colors.white.withOpacity(0.08),
                 ),
               ),
             ],
@@ -409,7 +407,7 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentColor,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: _accentColor.withValues(alpha: 0.6),
+                disabledBackgroundColor: _accentColor.withOpacity(0.6),
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -448,7 +446,8 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
               "Forgot Password?",
               style: TextStyle(
                 color: _accentColor,
-                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -462,8 +461,8 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _errorColor.withValues(alpha: 0.12),
-        border: Border.all(color: _errorColor.withValues(alpha: 0.35)),
+        color: _errorColor.withOpacity(0.12),
+        border: Border.all(color: _errorColor.withOpacity(0.35)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -485,10 +484,7 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
                 const SizedBox(height: 2),
                 Text(
                   _loginError,
-                  style: const TextStyle(
-                    color: _mutedTextColor,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: _mutedTextColor, fontSize: 14),
                 ),
               ],
             ),
@@ -498,28 +494,24 @@ class _TeacherLoginPageState extends State<TeacherLoginPage> {
     );
   }
 
-  InputDecoration _fieldDecoration({
-    required String hint,
-    required IconData icon,
-    Widget? suffix,
-  }) {
+  InputDecoration _fieldDecoration({required String hint, Widget? suffix}) {
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(13),
           borderSide: BorderSide(color: color, width: width),
         );
 
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _mutedTextColor, fontSize: 14),
+      hintStyle: const TextStyle(color: Color(0xFF9AA09B), fontSize: 16),
       filled: true,
-      fillColor: Colors.black.withValues(alpha: 0.22),
-      prefixIcon: Icon(icon, color: _accentColor.withValues(alpha: 0.85), size: 20),
+      fillColor: Colors.black.withOpacity(0.22),
+      prefixIcon: Icon(icon, color: _accentColor.withOpacity(0.85), size: 20),
       suffixIcon: suffix,
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      enabledBorder: border(Colors.white.withValues(alpha: 0.08)),
+      enabledBorder: border(Colors.white.withOpacity(0.08)),
       focusedBorder: border(_accentColor, 1.5),
-      border: border(Colors.white.withValues(alpha: 0.08)),
+      border: border(Colors.white.withOpacity(0.08)),
     );
   }
 }
