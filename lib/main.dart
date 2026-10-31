@@ -8,18 +8,17 @@ import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 import 'services/fcm_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore
+import 'pages/teacher/edit_exam_page.dart';
 import 'pages/teacher/edit_question_page.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/forgot_page.dart';
 import 'pages/teacher/exam_monitoring_page.dart';
 import 'pages/teacher/teacher_monitoring_page.dart';
 import 'pages/teacher/teacher_exams_page.dart';
-import 'pages/teacher/teacher_schedule_page.dart';
 import 'pages/teacher/student_management_page.dart';
 import 'pages/teacher/teacher_dashboard_page.dart';
 import 'pages/teacher/teacher_profile_page.dart' as teacher_profile;
-import 'pages/teacher/teacher_reports_page.dart';
-import 'pages/teacher/teacher_notifications_page.dart';
+import 'pages/teacher/exam_clips_page.dart';
 
 import 'widgets/responsive_scaffold.dart';
 
@@ -144,17 +143,22 @@ class _MyAppState extends State<MyApp> {
             final location = state.uri.path;
             int index = 0;
 
-            if (location.startsWith('/teacher-dashboard')) index = 0;
+            if (location.startsWith('/teacher-dashboard')) {
+              index = 0;
+            }
             if (location.startsWith('/teacher-exams') ||
-                location.startsWith('/exam-clips'))
+                location.startsWith('/exam-clips')) {
               index = 1;
-            if (location.startsWith('/teacher-monitoring')) index = 2;
+            }
+            if (location.startsWith('/teacher-monitoring')) {
+              index = 2;
+            }
 
             return ResponsiveScaffold(
               initialIndex: index,
               homePage: TeacherDashboardPage(teacherId: teacherId),
               examPage: const TeacherExamsPage(),
-              schedulePage: const TeacherSchedulePage(),
+              schedulePage: TeacherMonitoringPage(teacherId: teacherId),
               child: child,
             );
           },
@@ -213,12 +217,13 @@ class _MyAppState extends State<MyApp> {
               pageBuilder: (context, state) =>
                   NoTransitionPage(child: const TeacherExamsPage()),
             ),
-
-            // TEACHER SCHEDULE
             GoRoute(
-              path: '/teacher-schedule',
-              pageBuilder: (context, state) =>
-                  NoTransitionPage(child: const TeacherSchedulePage()),
+              path: '/exam-clips/:examId',
+              pageBuilder: (context, state) {
+                final examId = state.pathParameters['examId']!;
+
+                return NoTransitionPage(child: ExamClipsPage(examId: examId));
+              },
             ),
 
             // MONITORING
@@ -260,19 +265,12 @@ class _MyAppState extends State<MyApp> {
             // STUDENT MANAGEMENT
             GoRoute(
               path: '/student-management',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: StudentManagementPage()),
-            ),
-
-            GoRoute(
-              path: '/teacher-reports',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: TeacherReportsPage()),
-            ),
-            GoRoute(
-              path: '/teacher-notifications',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: TeacherNotificationsPage()),
+              pageBuilder: (context, state) {
+                final teacherId = FirebaseAuth.instance.currentUser?.uid ?? "";
+                return NoTransitionPage(
+                  child: StudentManagementPage(teacherId: teacherId),
+                );
+              },
             ),
 
             // SPECIFIC EXAM MONITORING
@@ -297,6 +295,34 @@ class _MyAppState extends State<MyApp> {
               ),
             ),
 
+            // EDIT EXAM
+            GoRoute(
+              path: '/edit-exam/:examId',
+              pageBuilder: (context, state) {
+                final examId = state.pathParameters['examId'];
+                final extra = state.extra as Map<String, dynamic>? ?? {};
+                return NoTransitionPage(
+                  child: EditExamPage(
+                    docId: examId,
+                    existing: extra['existing'],
+                  ),
+                );
+              },
+            ),
+
+            GoRoute(
+              path: '/edit-exam',
+              pageBuilder: (context, state) {
+                final extra = state.extra as Map<String, dynamic>? ?? {};
+                return NoTransitionPage(
+                  child: EditExamPage(
+                    docId: extra['docId'],
+                    existing: extra['existing'],
+                  ),
+                );
+              },
+            ),
+
             // EDIT QUESTION
             GoRoute(
               path: '/edit-question/:examDocId',
@@ -318,36 +344,20 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       title: 'Teacher FOTS',
       theme: ThemeData(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF7F8F6),
-        canvasColor: const Color(0xFFF7F8F6),
+        scaffoldBackgroundColor: const Color.fromARGB(255, 14, 45, 73),
+        canvasColor: const Color.fromARGB(255, 14, 45, 73),
         scrollbarTheme: ScrollbarThemeData(
           thumbColor: WidgetStateProperty.all(
-            const Color(0xFF153CFF).withValues(alpha: 0.45),
+            const Color.fromARGB(255, 24, 39, 68),
           ),
-          trackColor: WidgetStateProperty.all(const Color(0xFFDCDDDC)),
+          trackColor: WidgetStateProperty.all(Colors.black12),
           trackBorderColor: WidgetStateProperty.all(Colors.transparent),
           radius: const Radius.circular(8),
           thickness: WidgetStateProperty.all(8),
         ),
-        colorScheme:
-            ColorScheme.fromSeed(
-              seedColor: const Color(0xFF153CFF),
-              brightness: Brightness.light,
-            ).copyWith(
-              primary: const Color(0xFF153CFF),
-              secondary: const Color(0xFF153CFF),
-              tertiary: const Color(0xFF153CFF),
-              surface: const Color(0xFFF7F8F6),
-              error: const Color(0xFFC73044),
-            ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF7F8F6),
-          foregroundColor: Color(0xFF111217),
-          elevation: 0,
-        ),
-        progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: Color(0xFF153CFF),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          surface: const Color.fromARGB(255, 14, 45, 73),
         ),
       ),
       routerConfig: _router,

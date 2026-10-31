@@ -15,7 +15,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:web/web.dart' as web;
-import '../../helpers/AppTheme.dart';
 import '../../widgets/app_dialog.dart';
 
 // ---------------------------------------------------------------------------
@@ -40,15 +39,16 @@ class ExamClipsPage extends StatefulWidget {
 }
 
 class _ExamClipsPageState extends State<ExamClipsPage> {
-  static const Color _bgColor = AppTheme.bg;
-  static const Color _headerColor = AppTheme.soft;
-  static const Color _headerColorLight = AppTheme.headerLight;
-  static const Color _cardColor = AppTheme.card;
-  static const Color _textColor = AppTheme.text;
-  static const Color _mutedTextColor = AppTheme.mutedText;
-  static const Color _accentColor = AppTheme.accent;
-  static const Color _successColor = AppTheme.success;
-  static const Color _errorColor = AppTheme.error;
+  // Shared theme palette (same as TakeExamPage / ProfilePage)
+  static const Color _bgColor = Color(0xFF0B1220);
+  static const Color _headerColor = Color(0xFF0F2B45);
+  static const Color _headerColorLight = Color(0xFF17456F);
+  static const Color _cardColor = Color(0xFF0F3B61);
+  static const Color _textColor = Color(0xFFE6F0F8);
+  static const Color _mutedTextColor = Color(0xFF9FB0C3);
+  static const Color _accentColor = Color(0xFF3D8BFF);
+  static const Color _successColor = Color(0xFF4ADE80);
+  static const Color _errorColor = Color(0xFFF87171);
   static const Color _warnColor = Color(0xFFFBBF24);
   static const int _heartbeatTimeoutSeconds = 300;
 
@@ -139,21 +139,6 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     }
     if (value is String) return DateTime.tryParse(value);
     return null;
-  }
-
-  bool _isMonitoredAndOngoing(Map<String, dynamic> exam) {
-    if (exam['monitoringEnabled'] != true) return false;
-    final status = (exam['status'] ?? '').toString().toLowerCase();
-    if (['finished', 'finish', 'complete', 'completed'].contains(status)) {
-      return false;
-    }
-    final start = _asDateTime(exam['startTime']);
-    final end = _asDateTime(exam['endTime']);
-    final now = DateTime.now();
-    return start != null &&
-        end != null &&
-        !now.isBefore(start) &&
-        now.isBefore(end);
   }
 
   static Map<String, dynamic> _asMap(dynamic value) {
@@ -297,12 +282,6 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                   }
 
                   final exam = examSnapshot.data!.data() ?? {};
-                  if (!_isMonitoredAndOngoing(exam)) {
-                    return _emptyState(
-                      Icons.monitor_heart_outlined,
-                      'Monitoring is unavailable. Camera and screen clips are shown only while monitoring is enabled and the exam is ongoing.',
-                    );
-                  }
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: _studentsStream(exam),
                     builder: (context, rosterSnapshot) {
@@ -417,7 +396,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -440,13 +419,13 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _accentColor.withOpacity(0.9),
-                  _accentColor.withOpacity(0.25),
+                  _accentColor.withValues(alpha: 0.9),
+                  _accentColor.withValues(alpha: 0.25),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
+                  color: _accentColor.withValues(alpha: 0.35),
                   blurRadius: 12,
                   spreadRadius: 1,
                 ),
@@ -491,7 +470,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.25),
+        color: Colors.black.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -868,7 +847,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                 },
               ),
         filled: true,
-        fillColor: _cardColor.withOpacity(0.6),
+        fillColor: _cardColor.withValues(alpha: 0.6),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -876,11 +855,11 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -947,7 +926,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.mutedText,
+                    color: Colors.white70,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.4,
@@ -960,7 +939,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
           return SizedBox(
             height: tableHeight,
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(
+              behavior: ScrollConfiguration.of(
+                context,
+              ).copyWith(
                 scrollbars: false,
                 dragDevices: {
                   PointerDeviceKind.touch,
@@ -983,7 +964,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                 headingRowColor: WidgetStateProperty.all(_headerColor),
                 border: TableBorder(
                   horizontalInside: BorderSide(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                   ),
                 ),
                 columns: [
@@ -1563,7 +1544,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
       child: Text(
         initials.isEmpty ? '?' : initials,
         style: const TextStyle(
-          color: AppTheme.redDark,
+          color: Colors.white,
           fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
@@ -1624,9 +1605,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.22),
+            color: Colors.black.withValues(alpha: 0.22),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
           ),
           child: Column(
             children: [
@@ -1635,7 +1616,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                   Divider(
                     height: 1,
                     thickness: 1,
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                   ),
                 rows[i],
               ],
@@ -1956,10 +1937,8 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                       return ListView.separated(
                         shrinkWrap: true,
                         itemCount: clips.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (context, index) =>
-                            _clipTile(clips[index], color),
+                        separatorBuilder: (context, index) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) => _clipTile(clips[index], color),
                       );
                     },
                   ),
@@ -2007,9 +1986,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.22),
+        color: Colors.black.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2136,7 +2115,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                   label: const Text('Copy link'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _textColor,
-                    side: BorderSide(color: Colors.white.withOpacity(0.25)),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
                     textStyle: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,

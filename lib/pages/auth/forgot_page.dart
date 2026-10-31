@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,20 +11,16 @@ class ForgotPage extends StatefulWidget {
 }
 
 class _ForgotPageState extends State<ForgotPage> {
-  // FOTS editorial palette (matches login page)
-  static const Color _paper = Color(0xFFF7F8F6);
-  static const Color _ink = Color(0xFF111217);
-  static const Color _artBg = Color(0xFF101215);
-  static const Color _border = Color(0xFFD9DDDA);
-  static const Color _muted = Color(0xFF666C6C);
-  static const Color _footMuted = Color(0xFF828783);
-  static const Color _accentColor = Color(0xFF153CFF);
-  static const Color _accentHover = Color(0xFF0F2DB9);
-  static const Color _errorBg = Color(0xFFFFEBEE);
-  static const Color _errorText = Color(0xFFA42237);
-  static const Color _successBg = Color(0xFFE7F9F0);
-  static const Color _successText = Color(0xFF087B4F);
-  static const double _breakpoint = 790;
+  // Shared theme palette (matches LoginPage / ProfilePage)
+  static const Color _bgColor = Color(0xFF0B1220);
+  static const Color _headerColor = Color(0xFF0F2B45);
+  static const Color _headerColorLight = Color(0xFF17456F);
+  static const Color _cardColor = Color(0xFF0F3B61);
+  static const Color _textColor = Color(0xFFE6F0F8);
+  static const Color _mutedTextColor = Color(0xFF9FB0C3);
+  static const Color _accentColor = Color(0xFF3D8BFF);
+  static const Color _errorColor = Color(0xFFF87171);
+  static const Color _successColor = Color(0xFF4ADE80);
 
   final TextEditingController teacherIdController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -83,13 +77,14 @@ class _ForgotPageState extends State<ForgotPage> {
         'unavailable' || 'deadline-exceeded' =>
           'The password reset service is temporarily unavailable. Please try again.',
         'invalid-argument' => 'Enter a valid Teacher ID and email address.',
-        _ => 'Incorrect Teacher ID or Gmail.',
+        _ =>
+          'Incorrect Teacher ID or Gmail.',
       });
     } on FirebaseAuthException catch (e) {
       debugPrint('Password reset email failed: ${e.code}');
       _showError(switch (e.code) {
         'user-not-found' =>
-          'We could not verify those details. Check your Teacher ID and email and try again.',
+          'We couldn’t verify those details. Check your Teacher ID and email and try again.',
         'invalid-email' => 'Enter a valid email address and try again.',
         'too-many-requests' =>
           'Too many attempts. Please wait a moment and try again.',
@@ -139,19 +134,16 @@ class _ForgotPageState extends State<ForgotPage> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _accentColor.withOpacity(0.18),
-                      _accentColor.withOpacity(0.0),
+                      _accentColor.withValues(alpha: 0.18),
+                      _accentColor.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
               ),
-          ],
-        );
+            ),
+          ),
 
-        return Container(
-          color: _artBg,
-          constraints: BoxConstraints(minHeight: wide ? 0 : 190),
-          child: ClipRect(
+          SafeArea(
             child: Stack(
               children: [
                 Center(
@@ -168,7 +160,7 @@ class _ForgotPageState extends State<ForgotPage> {
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
+                                color: Colors.black.withValues(alpha: 0.25),
                                 blurRadius: 16,
                                 offset: const Offset(0, 8),
                               ),
@@ -192,7 +184,7 @@ class _ForgotPageState extends State<ForgotPage> {
                   top: 8,
                   left: 12,
                   child: Material(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: const Icon(
@@ -208,8 +200,8 @@ class _ForgotPageState extends State<ForgotPage> {
               ],
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -236,13 +228,13 @@ class _ForgotPageState extends State<ForgotPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _accentColor.withOpacity(0.9),
-                  _accentColor.withOpacity(0.25),
+                  _accentColor.withValues(alpha: 0.9),
+                  _accentColor.withValues(alpha: 0.25),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
+                  color: _accentColor.withValues(alpha: 0.35),
                   blurRadius: 14,
                   spreadRadius: 1,
                 ),
@@ -274,7 +266,7 @@ class _ForgotPageState extends State<ForgotPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text(
@@ -305,7 +297,7 @@ class _ForgotPageState extends State<ForgotPage> {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: _accentColor.withOpacity(0.15),
+                  color: _accentColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -327,7 +319,7 @@ class _ForgotPageState extends State<ForgotPage> {
               Expanded(
                 child: Container(
                   height: 1,
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
             ],
@@ -340,30 +332,29 @@ class _ForgotPageState extends State<ForgotPage> {
           ),
           const SizedBox(height: 16),
 
-        // Error / success banner
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          alignment: Alignment.topCenter,
-          child: _errorMessage.isNotEmpty
-              ? _buildBanner(
-                  message: _errorMessage,
-                  bgColor: _errorBg,
-                  textColor: _errorText,
-                  icon: Icons.error_outline,
-                )
-              : _successMessage.isNotEmpty
-              ? _buildBanner(
-                  message: _successMessage,
-                  bgColor: _successBg,
-                  textColor: _successText,
-                  icon: Icons.check_circle_outline,
-                )
-              : const SizedBox(width: double.infinity),
-        ),
+          // Error / success banner
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _errorMessage.isNotEmpty
+                ? _buildBanner(
+                    title: "Something went wrong",
+                    message: _errorMessage,
+                    color: _errorColor,
+                    icon: Icons.error_outline,
+                  )
+                : _successMessage.isNotEmpty
+                ? _buildBanner(
+                    title: "Email sent",
+                    message: _successMessage,
+                    color: _successColor,
+                    icon: Icons.check_circle_outline,
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
 
-        if (_errorMessage.isNotEmpty || _successMessage.isNotEmpty)
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
 
           // Teacher ID
           TextField(
@@ -405,7 +396,7 @@ class _ForgotPageState extends State<ForgotPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentColor,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: _accentColor.withOpacity(0.6),
+                disabledBackgroundColor: _accentColor.withValues(alpha: 0.6),
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -444,83 +435,54 @@ class _ForgotPageState extends State<ForgotPage> {
               "Back to Login",
               style: TextStyle(
                 color: _accentColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          "FOTS Teacher Edition · Password reset is sent to your registered email address.",
-          style: TextStyle(color: _footMuted, fontSize: 11, height: 1.6),
-        ),
-      ],
-    );
-  }
-
-  Widget _fieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: _ink,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+        ],
       ),
-    );
-  }
-
-  InputDecoration _fieldDecoration({required String hint}) {
-    OutlineInputBorder border(Color color, [double width = 1]) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(13),
-          borderSide: BorderSide(color: color, width: width),
-        );
-
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF9AA09B), fontSize: 16),
-      filled: true,
-      fillColor: Colors.white,
-      constraints: const BoxConstraints(minHeight: 56),
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 15),
-      enabledBorder: border(_border),
-      focusedBorder: border(_accentColor, 2),
-      border: border(_border),
     );
   }
 
   Widget _buildBanner({
+    required String title,
     required String message,
-    required Color bgColor,
-    required Color textColor,
+    required Color color,
     required IconData icon,
   }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.35)),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withOpacity(0.15)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: textColor, size: 20),
+          Icon(icon, color: color, size: 22),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 13,
-                height: 1.4,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: _mutedTextColor,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -542,12 +504,12 @@ class _ForgotPageState extends State<ForgotPage> {
       hintText: hint,
       hintStyle: const TextStyle(color: _mutedTextColor, fontSize: 14),
       filled: true,
-      fillColor: Colors.black.withOpacity(0.22),
-      prefixIcon: Icon(icon, color: _accentColor.withOpacity(0.85), size: 20),
+      fillColor: Colors.black.withValues(alpha: 0.22),
+      prefixIcon: Icon(icon, color: _accentColor.withValues(alpha: 0.85), size: 20),
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      enabledBorder: border(Colors.white.withOpacity(0.08)),
+      enabledBorder: border(Colors.white.withValues(alpha: 0.08)),
       focusedBorder: border(_accentColor, 1.5),
-      border: border(Colors.white.withOpacity(0.08)),
+      border: border(Colors.white.withValues(alpha: 0.08)),
     );
   }
 }

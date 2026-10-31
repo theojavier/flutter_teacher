@@ -27,23 +27,15 @@ class _EditExamPageState extends State<EditExamPage> {
   final _subjectController = TextEditingController();
   final _yearBlockController = TextEditingController();
   final _creatorController = TextEditingController();
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> _classes = [];
-  Map<String, String> _programAcronyms = {};
+  List<String> _programs = [];
   String? _selectedProgram;
-  String? _selectedClassId;
 
   DateTime? _startTime;
   DateTime? _endTime;
-  DateTime? _examDate;
-  DateTime? _submittedAt;
 
   String? _teacherId;
-  String? _reviewNote;
   String _statusValue = 'upcoming';
-  String _approvalStatus = 'draft';
-  int? _questionCount;
   bool _isPc = true;
-  bool _isSpecialExam = false;
 
   @override
   void initState() {
@@ -74,16 +66,15 @@ class _EditExamPageState extends State<EditExamPage> {
       if (!doc.exists) {
         throw StateError('The signed-in teacher profile could not be found.');
       }
-      final classSnapshot = await _db
-          .collection('classes')
-          .where('adviserId', isEqualTo: currentUser.uid)
-          .get();
-      final programSnapshot = await _db.collection('programs').get();
-      final classes = classSnapshot.docs.where((classDoc) {
-        final status = (classDoc.data()['status'] ?? '').toString();
-        return status != 'archived' && status != 'inactive';
-      }).toList();
       final data = doc.data()!;
+      final rawPrograms = data['programs'];
+      final programs = rawPrograms is List
+          ? rawPrograms
+                .map((program) => program.toString().trim())
+                .where((program) => program.isNotEmpty)
+                .toSet()
+                .toList()
+          : <String>[];
       final name =
           (data['name'] ??
                   data['fullName'] ??
@@ -97,40 +88,12 @@ class _EditExamPageState extends State<EditExamPage> {
 
       setState(() {
         _teacherId = data['ID']?.toString();
-        _classes = classes;
-        _programAcronyms = _buildProgramAcronyms(programSnapshot.docs);
-        _selectedClassId =
-            _classForExam(
-              _selectedClassId,
-              _selectedProgram,
-              _subjectController.text,
-              _yearBlockController.text,
-            ) ??
-            (widget.docId == null && classes.length == 1
-                ? classes.first.id
-                : null);
-        final selectedClass = _selectedClass;
-        if (selectedClass != null) {
-          _selectedProgram = (selectedClass['program'] ?? '').toString();
-          if (_subjectController.text.trim().isEmpty) {
-            _subjectController.text = (selectedClass['subject'] ?? '')
-                .toString();
-          }
-          if (_yearBlockController.text.trim().isEmpty) {
-            _yearBlockController.text = (selectedClass['yearBlock'] ?? '')
-                .toString();
-          }
-        }
-        if (_yearBlockController.text.trim().isEmpty) {
-          _yearBlockController.text = (data['yearBlock'] ?? '').toString();
-        }
-        if (_creatorController.text.trim().isEmpty) {
-          _creatorController.text = name;
-        }
-        _examDate ??= DateUtils.dateOnly(DateTime.now());
-        if (!_isSpecialExam && _selectedClassId != null) {
-          _refreshClassSchedule();
-        }
+        _programs = programs;
+        _selectedProgram = programs.contains(_selectedProgram)
+            ? _selectedProgram
+            : (programs.isEmpty ? null : programs.first);
+        _yearBlockController.text = (data['yearBlock'] ?? '').toString();
+        _creatorController.text = name;
         _isLoadingTeacherProfile = false;
       });
     } catch (e) {
@@ -183,22 +146,7 @@ class _EditExamPageState extends State<EditExamPage> {
       _selectedProgram = examProgram.isEmpty ? null : examProgram;
 
       _subjectController.text = (data['subject'] ?? '').toString();
-      final yearBlock = (data['yearBlock'] ?? '').toString();
-      final creator = (data['creator'] ?? '').toString();
-      if (yearBlock.trim().isNotEmpty) {
-        _yearBlockController.text = yearBlock;
-      }
-      if (creator.trim().isNotEmpty) {
-        _creatorController.text = creator;
-      }
-      _selectedClassId = (data['classId'] ?? '').toString().trim();
-      _isSpecialExam = data['isSpecialExam'] is bool
-          ? data['isSpecialExam'] as bool
-          : widget.docId != null;
       _isPc = data['isPc'] is bool ? data['isPc'] as bool : true;
-      _approvalStatus = (data['approvalStatus'] ?? 'draft').toString();
-      _reviewNote = (data['reviewNote'] ?? '').toString().trim();
-      _questionCount = int.tryParse(data['questionCount']?.toString() ?? '');
 
       _statusValue =
           ['finished', 'finish', 'completed', 'complete'].contains(statusValue)
@@ -212,166 +160,11 @@ class _EditExamPageState extends State<EditExamPage> {
 
       if (start is Timestamp) {
         _startTime = start.toDate();
-        _examDate = DateUtils.dateOnly(_startTime!);
       }
 
       if (end is Timestamp) {
         _endTime = end.toDate();
       }
-      _examDate ??= DateUtils.dateOnly(DateTime.now());
-
-      final submittedAt = data['submittedAt'];
-      _submittedAt = submittedAt is Timestamp ? submittedAt.toDate() : null;
-    });
-  }
-
-  String? _classForExam(
-    String? classId,
-    String? program,
-    String subject,
-    String yearBlock,
-  ) {
-    if (classId != null && _classes.any((classDoc) => classDoc.id == classId)) {
-      return classId;
-    }
-    for (final classDoc in _classes) {
-      final data = classDoc.data();
-      if ((data['program'] ?? '').toString() == (program ?? '') &&
-          (data['subject'] ?? '').toString() == subject &&
-          (data['yearBlock'] ?? '').toString() == yearBlock) {
-        return classDoc.id;
-      }
-    }
-    return null;
-  }
-
-  Map<String, dynamic>? get _selectedClass {
-    for (final classDoc in _classes) {
-      if (classDoc.id == _selectedClassId) return classDoc.data();
-    }
-    return null;
-  }
-
-  Map<String, String> _buildProgramAcronyms(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> programs,
-  ) {
-    final acronyms = <String, String>{};
-    const ignoredWords = {'a', 'an', 'and', 'for', 'in', 'of', 'the', 'to'};
-    for (final program in programs) {
-      final data = program.data();
-      final name = (data['name'] ?? '').toString().trim();
-      if (name.isEmpty) continue;
-      final words = name
-          .split(RegExp(r'\s+'))
-          .map((word) => word.replaceAll(RegExp(r'[^A-Za-z0-9]'), ''))
-          .where(
-            (word) =>
-                word.isNotEmpty && !ignoredWords.contains(word.toLowerCase()),
-          );
-      final acronym = words.map((word) => word[0].toUpperCase()).join();
-      if (acronym.isEmpty) continue;
-
-      acronyms[program.id] = acronym;
-      acronyms[name] = acronym;
-      final code = (data['code'] ?? '').toString().trim();
-      if (code.isNotEmpty) acronyms[code] = acronym;
-    }
-    return acronyms;
-  }
-
-  String _programLabel(Object? rawProgram) {
-    final value = (rawProgram ?? '').toString().trim();
-    return _programAcronyms[value] ?? value;
-  }
-
-  int? _classStartMinutes(Map<String, dynamic> classData) {
-    final value = classData['startMinutes'];
-    if (value is num) return value.toInt();
-    final label = (classData['startLabel'] ?? '').toString().trim();
-    final match = RegExp(
-      r'^(\d{1,2}):(\d{2})\s*(AM|PM)$',
-      caseSensitive: false,
-    ).firstMatch(label);
-    if (match == null) return null;
-
-    var hour = int.parse(match.group(1)!);
-    final minute = int.parse(match.group(2)!);
-    final meridiem = match.group(3)!.toUpperCase();
-    if (hour < 1 || hour > 12 || minute > 59) return null;
-    if (meridiem == 'AM') {
-      if (hour == 12) hour = 0;
-    } else if (hour != 12) {
-      hour += 12;
-    }
-    return hour * 60 + minute;
-  }
-
-  void _refreshClassSchedule() {
-    final classData = _selectedClass;
-    final startMinutes = classData == null
-        ? null
-        : _classStartMinutes(classData);
-    final duration = classData?['durationMin'];
-    if (classData == null ||
-        startMinutes == null ||
-        duration is! num ||
-        duration <= 0 ||
-        _examDate == null) {
-      _startTime = null;
-      _endTime = null;
-      return;
-    }
-
-    final date = DateUtils.dateOnly(_examDate!);
-    _startTime = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      startMinutes ~/ 60,
-      startMinutes % 60,
-    );
-    _endTime = _startTime!.add(Duration(minutes: duration.toInt()));
-  }
-
-  String _classScheduleLabel(Map<String, dynamic>? classData) {
-    if (classData == null) return 'Choose a class to use its scheduled time.';
-    final startMinutes = _classStartMinutes(classData);
-    final duration = classData['durationMin'];
-    if (startMinutes == null || duration is! num || duration <= 0) {
-      return 'This class has no valid scheduled time. Set a special exam time.';
-    }
-
-    final date = _examDate ?? DateTime.now();
-    final start = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      startMinutes ~/ 60,
-      startMinutes % 60,
-    );
-    final end = start.add(Duration(minutes: duration.toInt()));
-    return '${DateFormat('h:mm a').format(start)} – '
-        '${DateFormat('h:mm a').format(end)}'
-        ' · ${duration.toInt()} min';
-  }
-
-  Future<void> _pickExamDate() async {
-    final current = _examDate ?? DateTime.now();
-    final date = await AppDialog.custom<DateTime>(
-      context,
-      builder: (dialogContext) => _pickerBuilder(
-        dialogContext,
-        DatePickerDialog(
-          initialDate: current,
-          firstDate: DateTime(2024),
-          lastDate: DateTime(2100),
-        ),
-      ),
-    );
-    if (!mounted || date == null) return;
-    setState(() {
-      _examDate = DateUtils.dateOnly(date);
-      if (!_isSpecialExam) _refreshClassSchedule();
     });
   }
 
@@ -475,45 +268,18 @@ class _EditExamPageState extends State<EditExamPage> {
       return;
     }
 
-    if (_selectedClassId == null || _selectedClass == null) {
-      await AppDialog.alert(
-        context,
-        title: 'Class required',
-        message:
-            'Choose one of your assigned classes so the exam is linked to the correct class ID and schedule.',
-        tone: AppTone.warning,
-      );
-      return;
-    }
-    final program = (_selectedClass!['program'] ?? '').toString().trim();
-    if (program.isEmpty) {
-      await AppDialog.alert(
-        context,
-        title: 'Class program is missing',
-        message:
-            'Ask an administrator to complete the program details for this class.',
-        tone: AppTone.error,
-      );
-      return;
-    }
-
-    if (!_isSpecialExam) _refreshClassSchedule();
-    final startTime = _startTime;
-    final endTime = _endTime;
-    if (startTime == null || endTime == null) {
+    if (_startTime == null || _endTime == null) {
       await AppDialog.alert(
         context,
         title: 'Exam time required',
-        message: _isSpecialExam
-            ? 'Please select start and end time for this special exam.'
-            : 'This class has no valid scheduled time. Turn on the special exam option to set an exam time.',
+        message: 'Please select start and end time',
         tone: AppTone.warning,
       );
 
       return;
     }
 
-    if (!endTime.isAfter(startTime)) {
+    if (!_endTime!.isAfter(_startTime!)) {
       await AppDialog.alert(
         context,
         title: 'Invalid exam time',
@@ -542,17 +308,15 @@ class _EditExamPageState extends State<EditExamPage> {
     });
 
     final data = {
-      'program': program,
-      'classId': _selectedClassId!,
+      'program': _selectedProgram!.trim(),
       'subject': _subjectController.text.trim(),
       'yearBlock': _yearBlockController.text.trim(),
       'creator': _creatorController.text.trim(),
       'status': _statusValue,
       'isPc': _isPc,
-      'isSpecialExam': _isSpecialExam,
       'teacherId': _teacherId!.trim(),
-      'startTime': Timestamp.fromDate(startTime),
-      'endTime': Timestamp.fromDate(endTime),
+      'startTime': Timestamp.fromDate(_startTime!),
+      'endTime': Timestamp.fromDate(_endTime!),
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
@@ -575,9 +339,8 @@ class _EditExamPageState extends State<EditExamPage> {
         await _db.collection('examResults').doc(examId).set({
           'teacherId': _teacherId!.trim(),
           'examId': examId,
-          'classId': _selectedClassId!,
           'yearBlock': _yearBlockController.text.trim(),
-          'program': program,
+          'program': _selectedProgram!.trim(),
         }, SetOptions(merge: true));
 
         if (!mounted) return;
@@ -604,9 +367,8 @@ class _EditExamPageState extends State<EditExamPage> {
         await _db.collection('examResults').doc(examId).set({
           'teacherId': _teacherId!.trim(),
           'examId': examId,
-          'classId': _selectedClassId!,
           'yearBlock': _yearBlockController.text.trim(),
-          'program': program,
+          'program': _selectedProgram!.trim(),
         }, SetOptions(merge: true));
 
         if (!mounted) return;
@@ -646,285 +408,6 @@ class _EditExamPageState extends State<EditExamPage> {
     }
 
     return DateFormat('MMM d, yyyy – hh:mm a').format(dt);
-  }
-
-  Widget _scheduleSection() {
-    final classData = _selectedClass;
-    final date = _examDate ?? DateTime.now();
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: AppTheme.cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppTheme.sectionHeader(Icons.schedule, 'Exam schedule'),
-          if (!_isSpecialExam) ...[
-            const Text(
-              'The exam will use the selected class time automatically.',
-              style: TextStyle(
-                color: AppTheme.mutedText,
-                fontSize: 12,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: _pickExamDate,
-              borderRadius: BorderRadius.circular(12),
-              child: InputDecorator(
-                decoration: AppTheme.inputDecoration(
-                  'Exam date',
-                  icon: Icons.event_outlined,
-                ),
-                child: Text(
-                  DateFormat('MMM d, yyyy').format(date),
-                  style: const TextStyle(color: AppTheme.text),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(
-                color: AppTheme.bg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.line),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.access_time_outlined,
-                    size: 18,
-                    color: AppTheme.accent,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'CLASS TIME',
-                          style: TextStyle(
-                            color: AppTheme.mutedText,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _classScheduleLabel(classData),
-                          style: const TextStyle(
-                            color: AppTheme.text,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: () => setState(() => _isSpecialExam = true),
-                icon: const Icon(Icons.tune_outlined, size: 17),
-                label: const Text('Change time for a special exam'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.text,
-                  side: const BorderSide(color: AppTheme.line),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-              ),
-            ),
-          ] else ...[
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Special exam time',
-                    style: TextStyle(
-                      color: AppTheme.text,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isSpecialExam = false;
-                      _refreshClassSchedule();
-                    });
-                  },
-                  icon: const Icon(Icons.restart_alt, size: 17),
-                  label: const Text('Use class time'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _dateTimePicker(
-              'Start Time',
-              _startTime,
-              () => _pickDateTime(true),
-            ),
-            const SizedBox(height: 14),
-            _dateTimePicker('End Time', _endTime, () => _pickDateTime(false)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _reviewDetailsCard() {
-    final statusColor = switch (_approvalStatus) {
-      'pending' => const Color(0xFFB7791F),
-      'approved' => AppTheme.success,
-      'changes_requested' => AppTheme.error,
-      _ => AppTheme.mutedText,
-    };
-    final statusLabel = switch (_approvalStatus) {
-      'pending' => 'Pending review',
-      'approved' => 'Approved',
-      'changes_requested' => 'Changes requested',
-      _ => 'Draft',
-    };
-    final submitted = _submittedAt == null
-        ? 'Not submitted yet'
-        : DateFormat('MMM d, yyyy – hh:mm a').format(_submittedAt!);
-
-    Widget detail(String label, String value, IconData icon) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppTheme.bg,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppTheme.line),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 17, color: AppTheme.mutedText),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      color: AppTheme.mutedText,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: AppTheme.text,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: AppTheme.cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppTheme.sectionHeader(Icons.fact_check_outlined, 'Approval details'),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Text(
-                _questionCount == null
-                    ? 'Questions: not available'
-                    : 'Questions: $_questionCount',
-                style: const TextStyle(color: AppTheme.mutedText, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [detail('Submitted', submitted, Icons.schedule_outlined)],
-          ),
-          if (_reviewNote != null && _reviewNote!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.redSoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppTheme.accent.withValues(alpha: 0.25),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'ADMIN REVIEW NOTE',
-                    style: TextStyle(
-                      color: AppTheme.redDark,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _reviewNote!,
-                    style: const TextStyle(
-                      color: AppTheme.text,
-                      fontSize: 13,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 
   // ============================================================
@@ -999,7 +482,7 @@ class _EditExamPageState extends State<EditExamPage> {
                           'Exam Details',
                         ),
 
-                        _classDropdown(),
+                        _programDropdown(),
 
                         _field(
                           _subjectController,
@@ -1108,15 +591,35 @@ class _EditExamPageState extends State<EditExamPage> {
 
                   const SizedBox(height: 16),
 
-                  if (isEditing) ...[
-                    _reviewDetailsCard(),
-                    const SizedBox(height: 16),
-                  ],
-
                   // ==================================================
                   // SCHEDULE CARD
                   // ==================================================
-                  _scheduleSection(),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: AppTheme.cardDecoration(),
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        AppTheme.sectionHeader(Icons.schedule, 'Schedule'),
+
+                        _dateTimePicker(
+                          'Start Time',
+                          _startTime,
+                          () => _pickDateTime(true),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        _dateTimePicker(
+                          'End Time',
+                          _endTime,
+                          () => _pickDateTime(false),
+                        ),
+                      ],
+                    ),
+                  ),
 
                   const SizedBox(height: 20),
 
@@ -1223,71 +726,45 @@ class _EditExamPageState extends State<EditExamPage> {
   // TEXT FIELD
   // ============================================================
 
-  Widget _classDropdown() {
-    final selectedClassId =
-        _classes.any((classDoc) => classDoc.id == _selectedClassId)
-        ? _selectedClassId
+  Widget _programDropdown() {
+    final selectedProgram = _programs.contains(_selectedProgram)
+        ? _selectedProgram
         : null;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<String>(
-        key: ValueKey(selectedClassId),
-        initialValue: selectedClassId,
+        key: ValueKey(selectedProgram),
+        initialValue: selectedProgram,
         isExpanded: true,
         dropdownColor: AppTheme.header,
         iconEnabledColor: AppTheme.mutedText,
         style: TextStyle(color: AppTheme.text),
         decoration: AppTheme.inputDecoration(
-          'Assigned class',
+          'Program',
           icon: Icons.school_outlined,
           helper: _isLoadingTeacherProfile
-              ? 'Loading your assigned classes...'
-              : _classes.isEmpty
-              ? 'Ask an administrator to assign you to a class first.'
+              ? 'Loading programs from your teacher profile...'
+              : _programs.isEmpty
+              ? 'No programs are assigned to your teacher profile.'
               : null,
         ),
-        items: _classes
+        items: _programs
             .map(
-              (classDoc) => DropdownMenuItem(
-                value: classDoc.id,
-                child: Text(
-                  [
-                        _programLabel(classDoc.data()['program']),
-                        classDoc.data()['yearBlock'],
-                        classDoc.data()['subject'],
-                      ]
-                      .where(
-                        (value) => value != null && value.toString().isNotEmpty,
-                      )
-                      .join(' · '),
-                  overflow: TextOverflow.ellipsis,
-                ),
+              (program) => DropdownMenuItem(
+                value: program,
+                child: Text(program, overflow: TextOverflow.ellipsis),
               ),
             )
             .toList(),
-        onChanged: _isLoadingTeacherProfile || _classes.isEmpty
+        onChanged: _isLoadingTeacherProfile || _programs.isEmpty
             ? null
-            : (classId) {
-                if (classId == null) return;
-                final classDoc = _classes.firstWhere(
-                  (item) => item.id == classId,
-                );
-                setState(() {
-                  _selectedClassId = classId;
-                  _selectedProgram = (classDoc.data()['program'] ?? '')
-                      .toString();
-                  _yearBlockController.text =
-                      (classDoc.data()['yearBlock'] ?? '').toString();
-                  _subjectController.text = (classDoc.data()['subject'] ?? '')
-                      .toString();
-                  if (!_isSpecialExam) _refreshClassSchedule();
-                });
-              },
+            : (program) => setState(() => _selectedProgram = program),
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
-            return _classes.isEmpty
-                ? 'You need an assigned class before creating an exam.'
-                : 'Choose a class';
+            return _programs.isEmpty
+                ? 'Add a program to your teacher profile first.'
+                : 'Choose a program';
           }
           return null;
         },

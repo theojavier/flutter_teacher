@@ -239,11 +239,11 @@ Widget _buildOverviewSection() {
         runSpacing: 10,
         children: [
           ElevatedButton.icon(
-            onPressed: () async {
-              final result = await ExamFormDialog.show(context);
-              if (result?.openQuestions == true && context.mounted) {
-                context.go('/edit-question/${result!.examId}');
-              }
+            onPressed: () {
+              context.push(
+                '/edit-exam',
+                extra: {'docId': null, 'existing': null},
+              );
             },
             icon: const Icon(Icons.create),
             label: const Text("Create Exam"),
@@ -381,3 +381,4 @@ service cloud.firestore {
 - Shows accurate counts based on filters
 
 **To improve:** Consider using StreamBuilders for real-time updates instead of one-time loads.
+
