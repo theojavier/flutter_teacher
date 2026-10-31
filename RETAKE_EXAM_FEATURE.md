@@ -58,6 +58,12 @@ Teachers can:
 2. **Limit retakes** by setting a `maxRetakes` field on the exam document
 3. **Monitor student behavior** via the `previousAttempts` counter
 
+When a teacher allows a retake from the monitoring or exam clips page, the
+current result's `answers` and `cheatClips` documents are deleted before the
+parent student result document. This removes the old Firestore attempt data;
+it does not delete video files stored in Firebase Storage or nested
+subcollections beneath those documents.
+
 ### Example Teacher Dashboard Enhancement
 
 ```dart
@@ -128,4 +134,3 @@ match /examResults/{examId}/{studentId}/result {
 **Previous score is lost:**
 - All exam data is preserved before retake starts
 - Previous attempt data is accessible via Firestore history
-
