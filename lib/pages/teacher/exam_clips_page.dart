@@ -370,9 +370,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _warnColor.withOpacity(0.1),
+        color: _warnColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _warnColor.withOpacity(0.45)),
+        border: Border.all(color: _warnColor.withValues(alpha: 0.45)),
       ),
       child: Text(
         'Realtime presence is unavailable. Showing the latest heartbeat where available.\n$error',
@@ -396,7 +396,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -419,13 +419,13 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _accentColor.withOpacity(0.9),
-                  _accentColor.withOpacity(0.25),
+                  _accentColor.withValues(alpha: 0.9),
+                  _accentColor.withValues(alpha: 0.25),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
+                  color: _accentColor.withValues(alpha: 0.35),
                   blurRadius: 12,
                   spreadRadius: 1,
                 ),
@@ -470,7 +470,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.25),
+        color: Colors.black.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -499,7 +499,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         boxShadow: shadow
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
@@ -630,7 +630,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         ];
 
         return _doubleBorder(
-          color: _accentColor.withOpacity(0.55),
+          color: _accentColor.withValues(alpha: 0.55),
           innerRadius: 12,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -705,7 +705,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                       const SizedBox(width: 6),
                       Switch(
                         value: isPc,
-                        activeColor: _accentColor,
+                        activeThumbColor: _accentColor,
                         onChanged: (value) => _setPlatform(value),
                       ),
                     ],
@@ -728,9 +728,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7 * size, vertical: 4 * size),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -762,15 +762,15 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     ];
 
     return _doubleBorder(
-      color: _warnColor.withOpacity(0.55),
+      color: _warnColor.withValues(alpha: 0.55),
       innerRadius: 12,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(10, 7, 10, 4),
         decoration: BoxDecoration(
-          color: _warnColor.withOpacity(0.08),
+          color: _warnColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _warnColor.withOpacity(0.35)),
+          border: Border.all(color: _warnColor.withValues(alpha: 0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -847,7 +847,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                 },
               ),
         filled: true,
-        fillColor: _cardColor.withOpacity(0.6),
+        fillColor: _cardColor.withValues(alpha: 0.6),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
@@ -855,11 +855,11 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -879,7 +879,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _accentColor.withOpacity(0.35)),
+        border: Border.all(color: _accentColor.withValues(alpha: 0.35)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -964,7 +964,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                 headingRowColor: WidgetStateProperty.all(_headerColor),
                 border: TableBorder(
                   horizontalInside: BorderSide(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                   ),
                 ),
                 columns: [
@@ -1247,9 +1247,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1321,7 +1321,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
             painter: _HumpCardPainter(
               fillTop: _headerColorLight,
               fill: _cardColor,
-              border: _accentColor.withOpacity(0.55),
+              border: _accentColor.withValues(alpha: 0.55),
             ),
             child: Stack(
               children: [
@@ -1424,10 +1424,10 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: _errorColor.withOpacity(0.1),
+                                  color: _errorColor.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: _errorColor.withOpacity(0.4),
+                                    color: _errorColor.withValues(alpha: 0.4),
                                   ),
                                 ),
                                 child: Row(
@@ -1476,7 +1476,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                                 foregroundColor: _errorColor,
                                 minimumSize: const Size(0, 44),
                                 side: BorderSide(
-                                  color: _errorColor.withOpacity(0.6),
+                                  color: _errorColor.withValues(alpha: 0.6),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -1560,11 +1560,11 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_accentColor, _accentColor.withOpacity(0.3)],
+          colors: [_accentColor, _accentColor.withValues(alpha: 0.3)],
         ),
         boxShadow: [
           BoxShadow(
-            color: _accentColor.withOpacity(0.35),
+            color: _accentColor.withValues(alpha: 0.35),
             blurRadius: 14,
             spreadRadius: 1,
           ),
@@ -1605,9 +1605,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.22),
+            color: Colors.black.withValues(alpha: 0.22),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
           ),
           child: Column(
             children: [
@@ -1616,7 +1616,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                   Divider(
                     height: 1,
                     thickness: 1,
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                   ),
                 rows[i],
               ],
@@ -1732,9 +1732,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
         vertical: compact ? 3 : 4,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
         '$count',
@@ -1757,9 +1757,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _accentColor.withOpacity(0.15),
+                color: _accentColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _accentColor.withOpacity(0.35)),
+                border: Border.all(color: _accentColor.withValues(alpha: 0.35)),
               ),
               child: Icon(icon, size: 28, color: _accentColor),
             ),
@@ -1848,10 +1848,10 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
             decoration: BoxDecoration(
               color: _cardColor,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: color.withOpacity(0.45)),
+              border: Border.all(color: color.withValues(alpha: 0.45)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 24,
                   offset: const Offset(0, 10),
                 ),
@@ -1866,9 +1866,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
+                        color: color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: color.withOpacity(0.4)),
+                        border: Border.all(color: color.withValues(alpha: 0.4)),
                       ),
                       child: Icon(kind.icon, size: 22, color: color),
                     ),
@@ -1937,8 +1937,8 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                       return ListView.separated(
                         shrinkWrap: true,
                         itemCount: clips.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _clipTile(clips[i], color),
+                        separatorBuilder: (context, index) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) => _clipTile(clips[index], color),
                       );
                     },
                   ),
@@ -1986,9 +1986,9 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.22),
+        color: Colors.black.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2115,7 +2115,7 @@ class _ExamClipsPageState extends State<ExamClipsPage> {
                   label: const Text('Copy link'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _textColor,
-                    side: BorderSide(color: Colors.white.withOpacity(0.25)),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
                     textStyle: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -2221,7 +2221,7 @@ class _HumpCardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final path = _path(size);
-    canvas.drawShadow(path, Colors.black.withOpacity(0.6), 16, true);
+    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.6), 16, true);
     canvas.drawPath(
       path,
       Paint()

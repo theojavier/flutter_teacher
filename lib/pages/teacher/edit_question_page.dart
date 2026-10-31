@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../helpers/AppTheme.dart';
+import '../../helpers/app_theme.dart';
 import '../../widgets/app_dialog.dart';
 
 // Shared colors (same navy palette used in the rest of the app)
@@ -286,7 +286,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
       decoration: BoxDecoration(
         color: _kFieldBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kAccent.withOpacity(.4)),
+        border: Border.all(color: _kAccent.withValues(alpha: .4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -404,7 +404,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _kAccent.withOpacity(.15),
+                    color: _kAccent.withValues(alpha: .15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -441,7 +441,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                   tooltip: marked ? 'Undo delete' : 'Delete question',
                   style: IconButton.styleFrom(
                     backgroundColor: (marked ? _kAccent : AppTheme.error)
-                        .withOpacity(.15),
+                        .withValues(alpha: .15),
                   ),
                   icon: Icon(
                     marked ? Icons.undo : Icons.delete_outline,
@@ -458,7 +458,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(.15),
+                  color: AppTheme.error.withValues(alpha: .15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.error),
                 ),

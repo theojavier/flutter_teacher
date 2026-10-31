@@ -6,7 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '/helpers/AppTheme.dart';
+import '/helpers/app_theme.dart';
 
 // ---------- Data models ----------
 
@@ -624,7 +624,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             decoration: BoxDecoration(
               color: AppTheme.bg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -678,10 +678,10 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.10),
+                    color: AppTheme.accent.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.accent.withOpacity(0.25),
+                      color: AppTheme.accent.withValues(alpha: 0.25),
                     ),
                   ),
                   child: const Text(
@@ -715,12 +715,12 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         style: IconButton.styleFrom(
           foregroundColor: color,
           backgroundColor: selected
-              ? AppTheme.accent.withOpacity(0.15)
+              ? AppTheme.accent.withValues(alpha: 0.15)
               : Colors.transparent,
           side: BorderSide(
             color: selected
-                ? AppTheme.accent.withOpacity(0.45)
-                : Colors.white.withOpacity(0.12),
+                ? AppTheme.accent.withValues(alpha: 0.45)
+                : Colors.white.withValues(alpha: 0.12),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -770,8 +770,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         return ListView.separated(
           shrinkWrap: true,
           itemCount: clips.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, i) => _buildClipTile(clips[i].data(), kind),
+          separatorBuilder: (context, index) => const SizedBox(height: 10),
+          itemBuilder: (context, index) => _buildClipTile(clips[index].data(), kind),
         );
       },
     );
@@ -835,7 +835,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(

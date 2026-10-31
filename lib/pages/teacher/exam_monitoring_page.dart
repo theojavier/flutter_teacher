@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../helpers/AppTheme.dart';
+import '../../helpers/app_theme.dart';
 
 class ExamMonitoringPage extends StatelessWidget {
   final String examId;
@@ -184,7 +184,7 @@ class ExamMonitoringPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.12)),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -234,7 +234,7 @@ class ExamMonitoringPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.header,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: statusColor.withOpacity(0.20)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.20)),
       ),
       child: Row(
         children: [
@@ -242,7 +242,7 @@ class ExamMonitoringPage extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
+              color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(
@@ -307,9 +307,9 @@ class ExamMonitoringPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.20)),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -334,7 +334,7 @@ class ExamMonitoringPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

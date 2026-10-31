@@ -74,7 +74,7 @@ class _ProfileMenuTriggerState extends State<ProfileMenuTrigger> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           // The light "cylinder" pill sitting on the dark navy app bar.
-          color: Colors.white.withOpacity(0.18),
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(30),
         ),
         child: Row(
@@ -148,7 +148,7 @@ class ProfileMenuPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.18),
+              color: Colors.black.withValues(alpha: 0.18),
               blurRadius: 20,
               offset: const Offset(0, 12),
             ),
@@ -437,9 +437,9 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       height: 56,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _accentColor.withOpacity(0.15),
+                        color: _accentColor.withValues(alpha: 0.15),
                         border: Border.all(
-                          color: _accentColor.withOpacity(0.4),
+                          color: _accentColor.withValues(alpha: 0.4),
                         ),
                       ),
                       child: const Icon(
@@ -501,10 +501,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           horizontal: 14,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.22),
+                          color: Colors.black.withValues(alpha: 0.22),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
                         child: Row(
@@ -537,7 +537,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -576,7 +576,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                                   backgroundColor: _accentColor,
                                   foregroundColor: Colors.white,
                                   disabledBackgroundColor: _accentColor
-                                      .withOpacity(0.6),
+                                      .withValues(alpha: 0.6),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
@@ -617,8 +617,8 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.35)),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

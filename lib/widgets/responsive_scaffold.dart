@@ -168,25 +168,6 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
     if (uid != null) context.go('/teacherProfile/$uid');
   }
 
-  Future<void> _logout(BuildContext context) async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      await _profileSubscription?.cancel();
-      _cachedProfile = null;
-      profileImageUrl = null;
-      headerName = "Logged out";
-      if (mounted) context.go('/login');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Logout failed")));
-      }
-    }
-  }
-
   Widget _buildSidebar(int activeIndex) {
     return Container(
       width: 276,
@@ -197,7 +178,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           end: Alignment.bottomCenter,
           colors: [_headerColor, _bgColor],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.zero,
@@ -237,35 +218,17 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
 
     if (path.startsWith('/teacher-dashboard')) return 0;
     if (path.startsWith('/teacher-exams') ||
-    path.startsWith('/edit-exam') ||
-    path.startsWith('/edit-question') ||
-    path.startsWith('/exam-clips')) {
-  return 1;
-}
+        path.startsWith('/edit-exam') ||
+        path.startsWith('/edit-question') ||
+        path.startsWith('/exam-clips')) {
+      return 1;
+    }
     if (path.startsWith('/teacher-monitoring') ||
         path.startsWith('/exam-monitoring')) {
       return 2;
     }
 
     return -1; // profile, student-management, etc.
-  }
-
-  List<Widget> _buildActions(BuildContext context) {
-    return [
-      Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: ProfileMenuTrigger(
-          avatarUrl: profileImageUrl,
-          name: headerName,
-          idNumber: headerSection,
-          onViewProfile: _goToProfile,
-          onChangePassword: () {
-            confirmChangePassword(context);
-          },
-          onLogout: () => _logout(context),
-        ),
-      ),
-    ];
   }
 
   @override
@@ -289,7 +252,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
               colors: [_headerColorLight, _headerColor],
             ),
             border: Border(
-              bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),
           ),
         ),
@@ -402,14 +365,14 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    _accentColor.withOpacity(0.28),
-                    _accentColor.withOpacity(0.06),
+                    _accentColor.withValues(alpha: 0.28),
+                    _accentColor.withValues(alpha: 0.06),
                   ],
                 )
               : null,
           border: Border.all(
             color: selected
-                ? _accentColor.withOpacity(0.5)
+                ? _accentColor.withValues(alpha: 0.5)
                 : Colors.transparent,
           ),
         ),
@@ -418,8 +381,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           child: InkWell(
             onTap: () => _onSelectPage(index),
             borderRadius: BorderRadius.circular(16),
-            splashColor: _accentColor.withOpacity(0.15),
-            hoverColor: Colors.white.withOpacity(0.04),
+            splashColor: _accentColor.withValues(alpha: 0.15),
+            hoverColor: Colors.white.withValues(alpha: 0.04),
             highlightColor: Colors.transparent,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(6, 8, 12, 8),
@@ -450,7 +413,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                             : FontWeight.w600,
                         color: selected
                             ? _textColor
-                            : _textColor.withOpacity(0.85),
+                            : _textColor.withValues(alpha: 0.85),
                       ),
                     ),
                   ),
@@ -464,7 +427,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: _accentColor.withOpacity(0.6),
+                            color: _accentColor.withValues(alpha: 0.6),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -475,7 +438,7 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
                     Icon(
                       Icons.chevron_right_rounded,
                       size: 18,
-                      color: _mutedTextColor.withOpacity(0.6),
+                      color: _mutedTextColor.withValues(alpha: 0.6),
                     ),
                 ],
               ),
@@ -495,8 +458,8 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              _accentColor.withOpacity(opacity),
-              _accentColor.withOpacity(0),
+              _accentColor.withValues(alpha: opacity),
+              _accentColor.withValues(alpha: 0),
             ],
           ),
         ),
@@ -520,16 +483,16 @@ class _ResponsiveScaffoldState extends State<ResponsiveScaffold> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: active
-              ? [_accentColor.withOpacity(0.9), _accentColor.withOpacity(0.25)]
+              ? [_accentColor.withValues(alpha: 0.9), _accentColor.withValues(alpha: 0.25)]
               : [
-                  Colors.white.withOpacity(0.18),
-                  Colors.white.withOpacity(0.05),
+                  Colors.white.withValues(alpha: 0.18),
+                  Colors.white.withValues(alpha: 0.05),
                 ],
         ),
         boxShadow: active
             ? [
                 BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
+                  color: _accentColor.withValues(alpha: 0.35),
                   blurRadius: 12,
                   spreadRadius: 1,
                 ),

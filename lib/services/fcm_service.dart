@@ -2,7 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show debugPrint, defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 bool get _supportsFirebaseMessaging =>
     kIsWeb ||
@@ -51,12 +51,12 @@ Future<void> registerTeacherFCMToken(String teacherId) async {
 
   // Foreground notification handler
   FirebaseMessaging.onMessage.listen((msg) {
-    print("Foreground message: ${msg.notification?.title}");
+    debugPrint("Foreground message: ${msg.notification?.title}");
   });
 
   // Notification tapped
   FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-    print("Notification tapped: ${msg.data}");
+    debugPrint("Notification tapped: ${msg.data}");
   });
 }
 

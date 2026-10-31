@@ -208,11 +208,11 @@ class _NavHeaderState extends State<NavHeader> with TickerProviderStateMixin {
                           color: const Color.fromARGB(255, 19, 54, 87),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withValues(alpha: 0.08),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 12,
                               offset: const Offset(0, 8),
                             ),
@@ -249,7 +249,7 @@ class _NavHeaderState extends State<NavHeader> with TickerProviderStateMixin {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      splashColor: _accentColor.withOpacity(0.12),
+      splashColor: _accentColor.withValues(alpha: 0.12),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -264,7 +264,7 @@ class _NavHeaderState extends State<NavHeader> with TickerProviderStateMixin {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: _accentColor.withOpacity(0.12),
+                color: _accentColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

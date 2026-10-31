@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../helpers/AppTheme.dart';
+import '../../helpers/app_theme.dart';
 import '../../widgets/app_dialog.dart';
 
 class EditExamPage extends StatefulWidget {
@@ -390,11 +390,11 @@ class _EditExamPageState extends State<EditExamPage> {
         tone: AppTone.error,
       );
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -552,17 +552,17 @@ class _EditExamPageState extends State<EditExamPage> {
                         const SizedBox(height: 14),
 
                         Material(
-                          color: Colors.black.withOpacity(0.22),
+                          color: Colors.black.withValues(alpha: 0.22),
                           clipBehavior: Clip.antiAlias,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: Colors.white.withOpacity(0.06),
+                              color: Colors.white.withValues(alpha: 0.06),
                             ),
                           ),
                           child: SwitchListTile(
                             value: _isPc,
-                            activeColor: AppTheme.accent,
+                            activeThumbColor: AppTheme.accent,
                             onChanged: (value) {
                               setState(() {
                                 _isPc = value;
@@ -682,7 +682,7 @@ class _EditExamPageState extends State<EditExamPage> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.text,
 
-                      side: BorderSide(color: AppTheme.accent.withOpacity(0.6)),
+                      side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.6)),
 
                       padding: const EdgeInsets.symmetric(vertical: 14),
 

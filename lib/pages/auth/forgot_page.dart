@@ -134,8 +134,8 @@ class _ForgotPageState extends State<ForgotPage> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _accentColor.withOpacity(0.18),
-                      _accentColor.withOpacity(0.0),
+                      _accentColor.withValues(alpha: 0.18),
+                      _accentColor.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
@@ -160,7 +160,7 @@ class _ForgotPageState extends State<ForgotPage> {
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
+                                color: Colors.black.withValues(alpha: 0.25),
                                 blurRadius: 16,
                                 offset: const Offset(0, 8),
                               ),
@@ -184,7 +184,7 @@ class _ForgotPageState extends State<ForgotPage> {
                   top: 8,
                   left: 12,
                   child: Material(
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                     shape: const CircleBorder(),
                     child: IconButton(
                       icon: const Icon(
@@ -228,13 +228,13 @@ class _ForgotPageState extends State<ForgotPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _accentColor.withOpacity(0.9),
-                  _accentColor.withOpacity(0.25),
+                  _accentColor.withValues(alpha: 0.9),
+                  _accentColor.withValues(alpha: 0.25),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
+                  color: _accentColor.withValues(alpha: 0.35),
                   blurRadius: 14,
                   spreadRadius: 1,
                 ),
@@ -266,7 +266,7 @@ class _ForgotPageState extends State<ForgotPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Text(
@@ -297,7 +297,7 @@ class _ForgotPageState extends State<ForgotPage> {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: _accentColor.withOpacity(0.15),
+                  color: _accentColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -319,7 +319,7 @@ class _ForgotPageState extends State<ForgotPage> {
               Expanded(
                 child: Container(
                   height: 1,
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
             ],
@@ -396,7 +396,7 @@ class _ForgotPageState extends State<ForgotPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentColor,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: _accentColor.withOpacity(0.6),
+                disabledBackgroundColor: _accentColor.withValues(alpha: 0.6),
                 disabledForegroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -454,8 +454,8 @@ class _ForgotPageState extends State<ForgotPage> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.35)),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -504,12 +504,12 @@ class _ForgotPageState extends State<ForgotPage> {
       hintText: hint,
       hintStyle: const TextStyle(color: _mutedTextColor, fontSize: 14),
       filled: true,
-      fillColor: Colors.black.withOpacity(0.22),
-      prefixIcon: Icon(icon, color: _accentColor.withOpacity(0.85), size: 20),
+      fillColor: Colors.black.withValues(alpha: 0.22),
+      prefixIcon: Icon(icon, color: _accentColor.withValues(alpha: 0.85), size: 20),
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      enabledBorder: border(Colors.white.withOpacity(0.08)),
+      enabledBorder: border(Colors.white.withValues(alpha: 0.08)),
       focusedBorder: border(_accentColor, 1.5),
-      border: border(Colors.white.withOpacity(0.08)),
+      border: border(Colors.white.withValues(alpha: 0.08)),
     );
   }
 }
