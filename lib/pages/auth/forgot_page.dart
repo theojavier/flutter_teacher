@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,16 +13,20 @@ class ForgotPage extends StatefulWidget {
 }
 
 class _ForgotPageState extends State<ForgotPage> {
-  // Shared theme palette (matches LoginPage / ProfilePage)
-  static const Color _bgColor = Color(0xFF0B1220);
-  static const Color _headerColor = Color(0xFF0F2B45);
-  static const Color _headerColorLight = Color(0xFF17456F);
-  static const Color _cardColor = Color(0xFF0F3B61);
-  static const Color _textColor = Color(0xFFE6F0F8);
-  static const Color _mutedTextColor = Color(0xFF9FB0C3);
-  static const Color _accentColor = Color(0xFF3D8BFF);
-  static const Color _errorColor = Color(0xFFF87171);
-  static const Color _successColor = Color(0xFF4ADE80);
+  // FOTS editorial palette (matches login page)
+  static const Color _paper = Color(0xFFF7F8F6);
+  static const Color _ink = Color(0xFF111217);
+  static const Color _artBg = Color(0xFF101215);
+  static const Color _border = Color(0xFFD9DDDA);
+  static const Color _muted = Color(0xFF666C6C);
+  static const Color _footMuted = Color(0xFF828783);
+  static const Color _accentColor = Color(0xFF153CFF);
+  static const Color _accentHover = Color(0xFF0F2DB9);
+  static const Color _errorBg = Color(0xFFFFEBEE);
+  static const Color _errorText = Color(0xFFA42237);
+  static const Color _successBg = Color(0xFFE7F9F0);
+  static const Color _successText = Color(0xFF087B4F);
+  static const double _breakpoint = 790;
 
   final TextEditingController teacherIdController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -77,14 +83,13 @@ class _ForgotPageState extends State<ForgotPage> {
         'unavailable' || 'deadline-exceeded' =>
           'The password reset service is temporarily unavailable. Please try again.',
         'invalid-argument' => 'Enter a valid Teacher ID and email address.',
-        _ =>
-          'Incorrect Teacher ID or Gmail.',
+        _ => 'Incorrect Teacher ID or Gmail.',
       });
     } on FirebaseAuthException catch (e) {
       debugPrint('Password reset email failed: ${e.code}');
       _showError(switch (e.code) {
         'user-not-found' =>
-          'We couldn’t verify those details. Check your Teacher ID and email and try again.',
+          'We could not verify those details. Check your Teacher ID and email and try again.',
         'invalid-email' => 'Enter a valid email address and try again.',
         'too-many-requests' =>
           'Too many attempts. Please wait a moment and try again.',
@@ -119,58 +124,110 @@ class _ForgotPageState extends State<ForgotPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgColor,
-      body: Stack(
-        children: [
-          // Ambient glow (same family as login)
-          Positioned(
-            top: -120,
-            left: -80,
-            child: IgnorePointer(
-              child: Container(
-                width: 320,
-                height: 320,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _accentColor.withOpacity(0.18),
-                      _accentColor.withOpacity(0.0),
-                    ],
-                  ),
+      backgroundColor: _paper,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth > _breakpoint;
+          if (wide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 11, child: _buildArtPanel(wide: true)),
+                Expanded(
+                  flex: 10,
+                  child: _buildFormPanel(wide: true, constraints: constraints),
+                ),
+              ],
+            );
+          }
+
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildArtPanel(wide: false),
+                _buildFormPanel(wide: false, constraints: constraints),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildArtPanel({required bool wide}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screen = MediaQuery.of(context).size;
+        final titleSize = wide
+            ? (screen.width * 0.08).clamp(56.0, 120.0)
+            : 56.0;
+        final glowSize = wide ? 500.0 : 330.0;
+        final content = Column(
+          mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildBrandRow(),
+            if (!wide) const SizedBox(height: 29),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "RESET.\nRECOVER.\nRETURN.",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.085 * titleSize,
+                  height: 0.91,
                 ),
               ),
             ),
-          ),
+            if (wide)
+              const Text(
+                "FACE ON THE SCREEN / PASSWORD RECOVERY",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  letterSpacing: 1.8,
+                ),
+              ),
+          ],
+        );
 
-          SafeArea(
+        return Container(
+          color: _artBg,
+          constraints: BoxConstraints(minHeight: wide ? 0 : 190),
+          child: ClipRect(
             child: Stack(
               children: [
-                Center(
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(
-                      context,
-                    ).copyWith(scrollbars: false, overscroll: false),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 64, 16, 24),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
+                Positioned(
+                  left: wide
+                      ? constraints.maxWidth * 0.06
+                      : constraints.maxWidth * 0.45,
+                  top: wide ? screen.height * 0.16 : -130,
+                  child: IgnorePointer(
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Opacity(
+                        opacity: 0.78,
+                        child: Transform.rotate(
+                          angle: -35 * math.pi / 180,
+                          child: Container(
+                            width: glowSize,
+                            height: glowSize,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  Color(0xFF2CD281),
+                                  Color(0xFF153CFF),
+                                  Color(0xFF064A33),
+                                  Color(0x00064A33),
+                                ],
+                                stops: [0.0, 0.43, 0.60, 0.73],
                               ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [_buildHeaderZone(), _buildFormZone()],
                             ),
                           ),
                         ),
@@ -178,338 +235,313 @@ class _ForgotPageState extends State<ForgotPage> {
                     ),
                   ),
                 ),
-
-                // Back button (top-left)
-                Positioned(
-                  top: 8,
-                  left: 12,
-                  child: Material(
-                    color: Colors.white.withOpacity(0.08),
-                    shape: const CircleBorder(),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: _textColor,
-                        size: 22,
-                      ),
-                      tooltip: "Back to login",
-                      onPressed: () => context.go('/login'),
-                    ),
-                  ),
+                Padding(
+                  padding: wide
+                      ? const EdgeInsets.all(30)
+                      : const EdgeInsets.fromLTRB(22, 19, 22, 19),
+                  child: content,
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildHeaderZone() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 26),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_headerColorLight, _headerColor],
+  Widget _buildBrandRow() {
+    return Row(
+      children: [
+        Container(
+          width: 39,
+          height: 39,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Image.asset(
+            'assets/images/teacher-removebg-preview.png',
+            width: 32,
+            height: 32,
+            fit: BoxFit.contain,
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Text(
+          "FOTS",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1,
+          ),
+        ),
+        const Spacer(),
+        const Text(
+          "RECOVERY / 2026",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFormPanel({
+    required bool wide,
+    required BoxConstraints constraints,
+  }) {
+    final form = ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: wide ? 440 : double.infinity),
+      child: _buildForm(wide: wide),
+    );
+
+    if (!wide) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(22, 30, 22, 48),
+        child: form,
+      );
+    }
+
+    return SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: constraints.maxWidth * 0.08,
+              vertical: 36,
+            ),
+            child: form,
+          ),
         ),
       ),
-      child: Column(
-        children: [
-          Container(
-            width: 88,
-            height: 88,
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _accentColor.withOpacity(0.9),
-                  _accentColor.withOpacity(0.25),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _accentColor.withOpacity(0.35),
-                  blurRadius: 14,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(19),
-              child: Container(
-                color: _cardColor,
-                child: const Icon(
-                  Icons.lock_reset,
-                  size: 42,
-                  color: _accentColor,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Forgot Password?",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _textColor,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              "TEACHER ACCOUNT RECOVERY",
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildFormZone() {
-    return Container(
-      width: double.infinity,
-      color: _cardColor,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: _accentColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.mail_outline,
-                  size: 16,
-                  color: _accentColor,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                "Reset Password",
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  height: 1,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            "Enter your Teacher ID and the email linked to your account. "
-            "We'll send you a link to set a new password.",
-            style: TextStyle(color: _mutedTextColor, fontSize: 13, height: 1.4),
-          ),
-          const SizedBox(height: 16),
+  Widget _buildForm({required bool wide}) {
+    final headingSize = wide
+        ? (MediaQuery.of(context).size.width * 0.04).clamp(32.0, 49.0)
+        : 37.0;
 
-          // Error / success banner
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            alignment: Alignment.topCenter,
-            child: _errorMessage.isNotEmpty
-                ? _buildBanner(
-                    title: "Something went wrong",
-                    message: _errorMessage,
-                    color: _errorColor,
-                    icon: Icons.error_outline,
-                  )
-                : _successMessage.isNotEmpty
-                ? _buildBanner(
-                    title: "Email sent",
-                    message: _successMessage,
-                    color: _successColor,
-                    icon: Icons.check_circle_outline,
-                  )
-                : const SizedBox(width: double.infinity),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          "03 / PASSWORD RECOVERY",
+          style: TextStyle(
+            color: _accentColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 2,
           ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          "Reset password.",
+          style: TextStyle(
+            color: _ink,
+            fontSize: headingSize,
+            fontWeight: FontWeight.w800,
+            height: 1.06,
+            letterSpacing: -0.052 * headingSize,
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          "Enter your Teacher ID and email address. We'll send you a link to create a new password.",
+          style: TextStyle(color: _muted, fontSize: 14, height: 1.7),
+        ),
+        const SizedBox(height: 28),
 
-          const SizedBox(height: 8),
+        // Error / success banner
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _errorMessage.isNotEmpty
+              ? _buildBanner(
+                  message: _errorMessage,
+                  bgColor: _errorBg,
+                  textColor: _errorText,
+                  icon: Icons.error_outline,
+                )
+              : _successMessage.isNotEmpty
+              ? _buildBanner(
+                  message: _successMessage,
+                  bgColor: _successBg,
+                  textColor: _successText,
+                  icon: Icons.check_circle_outline,
+                )
+              : const SizedBox(width: double.infinity),
+        ),
 
-          // Teacher ID
-          TextField(
-            controller: teacherIdController,
-            style: const TextStyle(color: _textColor),
-            cursorColor: _accentColor,
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => _emailFocus.requestFocus(),
-            decoration: _fieldDecoration(
-              hint: "Teacher ID",
-              icon: Icons.badge_outlined,
+        if (_errorMessage.isNotEmpty || _successMessage.isNotEmpty)
+          const SizedBox(height: 20),
+
+        _fieldLabel("Teacher ID"),
+        TextField(
+          controller: teacherIdController,
+          style: const TextStyle(color: _ink, fontSize: 16),
+          cursorColor: _accentColor,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _emailFocus.requestFocus(),
+          decoration: _fieldDecoration(hint: "Enter your Teacher ID"),
+        ),
+        const SizedBox(height: 17),
+        _fieldLabel("Email"),
+        TextField(
+          controller: emailController,
+          focusNode: _emailFocus,
+          keyboardType: TextInputType.emailAddress,
+          style: const TextStyle(color: _ink, fontSize: 16),
+          cursorColor: _accentColor,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) {
+            if (!isLoading && !_emailSent) _sendResetEmail();
+          },
+          decoration: _fieldDecoration(hint: "Enter your email"),
+        ),
+        const SizedBox(height: 25),
+        SizedBox(
+          width: double.infinity,
+          height: 57,
+          child: ElevatedButton(
+            onPressed: (isLoading || _emailSent) ? null : _sendResetEmail,
+            style: ButtonStyle(
+              elevation: const WidgetStatePropertyAll(0),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              foregroundColor: const WidgetStatePropertyAll(Colors.white),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return _accentColor.withOpacity(0.6);
+                }
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.pressed)) {
+                  return _accentHover;
+                }
+                return _accentColor;
+              }),
+              textStyle: const WidgetStatePropertyAll(
+                TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-
-          // Email
-          TextField(
-            controller: emailController,
-            focusNode: _emailFocus,
-            keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(color: _textColor),
-            cursorColor: _accentColor,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) {
-              if (!isLoading && !_emailSent) _sendResetEmail();
-            },
-            decoration: _fieldDecoration(
-              hint: "Email",
-              icon: Icons.alternate_email,
-            ),
-          ),
-          const SizedBox(height: 22),
-
-          // Send button
-          SizedBox(
-            height: 50,
-            child: ElevatedButton(
-              onPressed: (isLoading || _emailSent) ? null : _sendResetEmail,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accentColor,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: _accentColor.withOpacity(0.6),
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              child: isLoading
-                  ? const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+            child: isLoading
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
-                        SizedBox(width: 10),
-                        Text("Sending..."),
-                      ],
-                    )
-                  : const Text("Send Reset Link"),
-            ),
+                      ),
+                      SizedBox(width: 10),
+                      Text("Sending reset link..."),
+                    ],
+                  )
+                : const Text("Send Reset Link"),
           ),
-          const SizedBox(height: 6),
-
-          // Back to login
-          TextButton(
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
             onPressed: () => context.go('/login'),
             child: const Text(
               "Back to Login",
               style: TextStyle(
                 color: _accentColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          "FOTS Teacher Edition · Password reset is sent to your registered email address.",
+          style: TextStyle(color: _footMuted, fontSize: 11, height: 1.6),
+        ),
+      ],
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration({required String hint}) {
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF9AA09B), fontSize: 16),
+      filled: true,
+      fillColor: Colors.white,
+      constraints: const BoxConstraints(minHeight: 56),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 15),
+      enabledBorder: border(_border),
+      focusedBorder: border(_accentColor, 2),
+      border: border(_border),
+    );
+  }
+
+  Widget _buildBanner({
+    required String message,
+    required Color bgColor,
+    required Color textColor,
+    required IconData icon,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: textColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                height: 1.4,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBanner({
-    required String title,
-    required String message,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        border: Border.all(color: color.withOpacity(0.35)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _textColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    color: _mutedTextColor,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  InputDecoration _fieldDecoration({
-    required String hint,
-    required IconData icon,
-  }) {
-    OutlineInputBorder border(Color color, [double width = 1]) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: color, width: width),
-        );
-
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: _mutedTextColor, fontSize: 14),
-      filled: true,
-      fillColor: Colors.black.withOpacity(0.22),
-      prefixIcon: Icon(icon, color: _accentColor.withOpacity(0.85), size: 20),
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      enabledBorder: border(Colors.white.withOpacity(0.08)),
-      focusedBorder: border(_accentColor, 1.5),
-      border: border(Colors.white.withOpacity(0.08)),
     );
   }
 }

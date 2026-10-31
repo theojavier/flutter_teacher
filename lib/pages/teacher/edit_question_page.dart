@@ -1,17 +1,20 @@
 // lib/pages/edit_question_page.dart
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../helpers/AppTheme.dart';
 import '../../widgets/app_dialog.dart';
 
-// Shared colors (same navy palette used in the rest of the app)
-const _kText = Color(0xFFE6F0F8);
-const _kMuted = Color(0xFF9DB8D1);
-const _kAccent = Color(0xFF4DA3FF);
-const _kFieldBg = Color(0xFF0D1524);
-const _kMenuBg = Color(0xFF132033);
+const _kText = AppTheme.text;
+const _kMuted = AppTheme.mutedText;
+const _kAccent = Color(0xFF153CFF);
+const _kAccentSoft = Color(0xFFEEF2FF);
+const _kMenuBg = AppTheme.header;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,27 +64,67 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   final _db = FirebaseFirestore.instance;
   bool _loading = true;
   bool _saving = false;
+  bool _submitting = false;
+  bool _returningToDraft = false;
+  bool _canEditQuestions = false;
+  Map<String, dynamic>? _examData;
+  bool _examLoaded = false;
+  Object? _examError;
   String? _error;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _examSubscription;
 
   // Local model for editing
   final List<_QuestionLocal> _questions = [];
+  late final Stream<DocumentSnapshot<Map<String, dynamic>>> _examStream = _db
+      .collection('exams')
+      .doc(widget.examDocId)
+      .snapshots();
+  late final Future<Map<String, String>> _programAcronymsFuture =
+      _loadProgramAcronyms();
 
   @override
   void initState() {
     super.initState();
-    FirebaseAuth.instance
-        .authStateChanges()
-        .firstWhere((u) => u != null)
-        .then((_) => _loadQuestions())
-        .catchError((_) {
-          // fallback: try after a short delay
-          Future.delayed(const Duration(seconds: 1), _loadQuestions);
+    _examSubscription = _examStream.listen(
+      (snapshot) {
+        if (!mounted) return;
+        final data = snapshot.data();
+        setState(() {
+          _examData = snapshot.exists ? data : null;
+          _examLoaded = true;
+          _examError = null;
+          _canEditQuestions =
+              snapshot.exists && data != null && _isEditableExam(data);
         });
+      },
+      onError: (Object error) {
+        debugPrint('Failed to watch exam: $error');
+        if (!mounted) return;
+        setState(() {
+          _examError = error;
+          _examLoaded = true;
+          _canEditQuestions = false;
+        });
+      },
+    );
+    unawaited(_loadQuestions());
   }
 
   // -------------------------------------------------------------------------
   // Data
   // -------------------------------------------------------------------------
+  bool _isEditableExam(Map<String, dynamic> examData) {
+    final approvalStatus = (examData['approvalStatus'] ?? 'draft')
+        .toString()
+        .toLowerCase();
+    final examStatus = (examData['status'] ?? '').toString().toLowerCase();
+    final endTime = examData['endTime'];
+    final finished =
+        ['finished', 'finish', 'completed', 'complete'].contains(examStatus) ||
+        (endTime is Timestamp && !endTime.toDate().isAfter(DateTime.now()));
+    return ['draft', 'changes_requested'].contains(approvalStatus) && !finished;
+  }
+
   Future<void> _loadQuestions() async {
     if (!mounted) return;
     setState(() {
@@ -93,19 +136,22 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     String? error;
 
     try {
-      // Wait for auth if currentUser is null
-      var user = FirebaseAuth.instance.currentUser;
-      user ??= await FirebaseAuth.instance.authStateChanges().firstWhere(
-        (u) => u != null,
-      );
-      await user!.getIdToken(true);
+      if (FirebaseAuth.instance.currentUser == null) {
+        throw StateError('You must be signed in to load exam questions.');
+      }
 
       final functions = FirebaseFunctions.instanceFor(
         region: 'asia-southeast1',
       );
-      final result = await functions.httpsCallable('loadExamQuestions').call({
-        'examId': widget.examDocId,
-      });
+      final result = await functions
+          .httpsCallable('loadExamQuestions')
+          .call({'examId': widget.examDocId})
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw TimeoutException(
+              'The server did not respond within 30 seconds. Check your connection and try again.',
+            ),
+          );
 
       final List<dynamic> questionsData = result.data['questions'] ?? [];
       for (final raw in questionsData) {
@@ -152,7 +198,211 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     await AppDialog.alert(context, title: title, message: message, tone: tone);
   }
 
+  Future<Map<String, String>> _loadProgramAcronyms() async {
+    final snapshot = await _db.collection('programs').get();
+    final acronyms = <String, String>{};
+    const ignoredWords = {'a', 'an', 'and', 'for', 'in', 'of', 'the', 'to'};
+    for (final program in snapshot.docs) {
+      final data = program.data();
+      final name = (data['name'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final words = name
+          .split(RegExp(r'\s+'))
+          .map((word) => word.replaceAll(RegExp(r'[^A-Za-z0-9]'), ''))
+          .where(
+            (word) =>
+                word.isNotEmpty && !ignoredWords.contains(word.toLowerCase()),
+          );
+      final acronym = words.map((word) => word[0].toUpperCase()).join();
+      if (acronym.isEmpty) continue;
+
+      acronyms[program.id] = acronym;
+      acronyms[name] = acronym;
+      final code = (data['code'] ?? '').toString().trim();
+      if (code.isNotEmpty) acronyms[code] = acronym;
+    }
+    return acronyms;
+  }
+
+  Widget _examIdentityCard(
+    Map<String, dynamic> data,
+    Map<String, String> programAcronyms,
+  ) {
+    final subject = (data['subject'] ?? data['title'] ?? '').toString().trim();
+    final programValue = (data['program'] ?? '').toString().trim();
+    final program = programAcronyms[programValue];
+    final yearBlock = (data['yearBlock'] ?? '').toString().trim();
+    final schoolYear = (data['schoolYear'] ?? '').toString().trim();
+    final semester = (data['semester'] ?? '').toString().trim();
+    final status = (data['approvalStatus'] ?? 'draft').toString().toLowerCase();
+    final isPendingReview = status == 'pending';
+    final programTitle =
+        program ?? (programValue.isEmpty ? 'EXAM' : 'PROGRAM $programValue');
+    final examTitle = [
+      '$programTitle${yearBlock.isNotEmpty ? '.$yearBlock' : ''}',
+      if (subject.isNotEmpty) '($subject)',
+    ].join(' ');
+
+    Widget detail(String label, String value) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppTheme.bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 11),
+          children: [
+            TextSpan(
+              text: '$label  ',
+              style: const TextStyle(
+                color: AppTheme.mutedText,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(
+                color: AppTheme.text,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final details = <Widget>[
+      if (schoolYear.isNotEmpty) detail('School year', schoolYear),
+      if (semester.isNotEmpty) detail('Semester', semester),
+    ];
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  examTitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.display(25, ls: -0.045),
+                ),
+              ),
+              if (isPendingReview) ...[
+                const SizedBox(width: 10),
+                Container(
+                  margin: const EdgeInsets.only(top: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB7791F).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: const Color(0xFFB7791F).withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: const Text(
+                    'IN REVIEW',
+                    style: TextStyle(
+                      color: Color(0xFFB7791F),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (details.isNotEmpty) ...[
+            const SizedBox(height: 9),
+            Wrap(spacing: 7, runSpacing: 7, children: details),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _returnToDraft() async {
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: 'Return exam to draft?',
+      message:
+          'This removes the exam from the admin review queue. You can edit it '
+          'and submit it again later.',
+      detail: 'The exam questions and schedule will not be deleted.',
+      confirmLabel: 'Return to draft',
+      tone: AppTone.warning,
+      icon: Icons.undo_outlined,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _returningToDraft = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw StateError('No signed-in teacher was found.');
+      }
+      final userDoc = await _db.collection('users').doc(user.uid).get();
+      final teacherId = userDoc.data()?['ID']?.toString();
+      final examRef = _db.collection('exams').doc(widget.examDocId);
+
+      await _db.runTransaction((transaction) async {
+        final examSnapshot = await transaction.get(examRef);
+        if (!examSnapshot.exists) {
+          throw StateError('This exam no longer exists.');
+        }
+        final data = examSnapshot.data()!;
+        final isOwner =
+            data['createdBy'] == user.uid ||
+            (teacherId != null && data['teacherId'] == teacherId);
+        if (!isOwner) {
+          throw StateError('You are not allowed to change this exam.');
+        }
+        if ((data['approvalStatus'] ?? 'draft').toString().toLowerCase() !=
+            'pending') {
+          throw StateError(
+            'Only exams pending review can be returned to draft.',
+          );
+        }
+
+        transaction.update(examRef, {
+          'approvalStatus': 'draft',
+          'submittedAt': FieldValue.delete(),
+          'reviewNote': FieldValue.delete(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      });
+
+      if (!mounted) return;
+      await _showFeedback(
+        'Returned to draft',
+        'The exam is no longer waiting for review. You can edit it and submit it again.',
+        tone: AppTone.success,
+      );
+    } catch (error) {
+      await _showFeedback(
+        'Unable to return exam to draft',
+        '$error',
+        tone: AppTone.error,
+      );
+    } finally {
+      if (mounted) setState(() => _returningToDraft = false);
+    }
+  }
+
   Future<void> _saveAll() async {
+    if (!_canEditQuestions || _loading || _error != null) return;
+
     // validate required fields
     for (final q in _questions) {
       if (q.isMarkedForDelete) continue;
@@ -235,7 +485,54 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     }
   }
 
+  Future<void> _submitForReview() async {
+    if (!_canEditQuestions || _loading || _error != null) return;
+
+    if (_questions.any((q) => q.docId == null || q.isMarkedForDelete)) {
+      await _showFeedback(
+        'Save your changes first',
+        'Tap Save Changes so new, edited and deleted questions are stored before you submit.',
+        tone: AppTone.warning,
+      );
+      return;
+    }
+    final ok = await AppDialog.confirm(
+      context,
+      title: 'Submit for review?',
+      message:
+          'An admin will review your questions. You can\'t edit '
+          'them while the exam is pending.',
+      confirmLabel: 'Submit',
+      tone: AppTone.info,
+    );
+    if (!ok || !mounted) return;
+
+    setState(() => _submitting = true);
+    try {
+      await FirebaseFunctions.instanceFor(
+        region: 'asia-southeast1',
+      ).httpsCallable('submitExamForReview').call({'examId': widget.examDocId});
+      await _showFeedback(
+        'Submitted',
+        'Your exam is now waiting for admin review.',
+        tone: AppTone.success,
+      );
+    } on FirebaseFunctionsException catch (e) {
+      await _showFeedback(
+        'Unable to submit',
+        e.message ?? e.code,
+        tone: AppTone.error,
+      );
+    } catch (e) {
+      await _showFeedback('Unable to submit', '$e', tone: AppTone.error);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   Future<void> _toggleMarkForDelete(_QuestionLocal q) async {
+    if (!_canEditQuestions || _loading || _error != null) return;
+
     if (!q.isMarkedForDelete) {
       final confirmed = await AppDialog.confirm(
         context,
@@ -259,6 +556,8 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   }
 
   Future<void> _showAddQuestionDialog() async {
+    if (!_canEditQuestions || _loading || _error != null) return;
+
     final result = await AppDialog.custom<_QuestionLocal>(
       context,
       builder: (_) => _AddQuestionDialog(),
@@ -271,6 +570,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
 
   @override
   void dispose() {
+    _examSubscription?.cancel();
     for (final q in _questions) {
       q.dispose();
     }
@@ -284,9 +584,9 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: _kFieldBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kAccent.withOpacity(.4)),
+        color: _kAccentSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _kAccent.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -306,58 +606,295 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
     );
   }
 
-  Widget _buildHero() {
-    final mc = _byType('multiple-choice').length;
-    final tf = _byType('true-false').length;
-    final mt = _byType('matching').length;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _sectionHeader(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(Icons.quiz_outlined, color: AppTheme.accent, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'EXAM QUESTIONS',
-                style: TextStyle(
-                  color: AppTheme.accent,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: .8,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: _kAccent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: _kAccent),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 10),
           Text(
-            'Question Editor',
-            style: TextStyle(
+            title,
+            style: const TextStyle(
               color: AppTheme.text,
-              fontSize: 24,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Manage, update and organize exam questions.',
-            style: TextStyle(color: AppTheme.mutedText),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _statChip(Icons.checklist, '$mc Multiple Choice'),
-              _statChip(Icons.rule, '$tf True / False'),
-              _statChip(Icons.compare_arrows, '$mt Matching'),
-            ],
-          ),
+          const SizedBox(width: 10),
+          Expanded(child: Container(height: 1, color: AppTheme.line)),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeader() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 10),
+      Text('FOTS / QUESTION / 04', style: AppTheme.mono(10, color: _kAccent)),
+      const SizedBox(height: 12),
+      Text('Questions.', style: AppTheme.display(34, ls: -0.06)),
+      const SizedBox(height: 6),
+      Text(
+        _canEditQuestions
+            ? 'Manage, update and organize exam questions'
+            : 'View questions. Editing is locked for this exam.',
+        style: const TextStyle(
+          color: AppTheme.mutedText,
+          fontSize: 13,
+          height: 1.6,
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildChips() {
+    final mc = _byType('multiple-choice').length;
+    final tf = _byType('true-false').length;
+    final mt = _byType('matching').length;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _statChip(Icons.checklist, '$mc Multiple Choice'),
+        _statChip(Icons.rule, '$tf True / False'),
+        _statChip(Icons.compare_arrows, '$mt Matching'),
+      ],
+    );
+  }
+
+  Widget _approvalCard() {
+    if (_examError != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: AppTheme.cardDecoration(),
+        child: Text(
+          'Could not load approval details: $_examError',
+          style: const TextStyle(color: _kAccent, fontSize: 13),
+        ),
+      );
+    }
+    if (!_examLoaded) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: AppTheme.cardDecoration(),
+        child: const LinearProgressIndicator(color: _kAccent),
+      );
+    }
+    final data = _examData;
+    if (data == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: AppTheme.cardDecoration(),
+        child: const Text(
+          'Approval details are unavailable because this exam no longer exists.',
+          style: TextStyle(color: AppTheme.mutedText, fontSize: 13),
+        ),
+      );
+    }
+
+    final status = (data['approvalStatus'] ?? 'draft').toString().toLowerCase();
+    final note = (data['reviewNote'] ?? '').toString().trim();
+    final questionCount = _questions.where((q) => !q.isMarkedForDelete).length;
+    final submittedValue = data['submittedAt'];
+    final submittedAt = submittedValue is Timestamp
+        ? DateFormat('MMM d, yyyy · h:mm a').format(submittedValue.toDate())
+        : null;
+
+    final color = switch (status) {
+      'pending' => const Color(0xFFB7791F),
+      'approved' => AppTheme.success,
+      'changes_requested' => _kAccent,
+      _ => AppTheme.mutedText,
+    };
+    final label = switch (status) {
+      'pending' => 'Pending review',
+      'approved' => 'Approved',
+      'changes_requested' => 'Changes requested',
+      _ => 'Draft',
+    };
+
+    return FutureBuilder<Map<String, String>>(
+      future: _programAcronymsFuture,
+      builder: (context, programSnapshot) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _examIdentityCard(data, programSnapshot.data ?? const {}),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: AppTheme.cardDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionHeader(Icons.fact_check_outlined, 'Approval details'),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Questions in editor: $questionCount',
+                        style: const TextStyle(
+                          color: AppTheme.mutedText,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (submittedAt != null)
+                        Text(
+                          'Submitted: $submittedAt',
+                          style: const TextStyle(
+                            color: AppTheme.mutedText,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (note.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _kAccentSoft,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _kAccent.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ADMIN REVIEW NOTE',
+                            style: AppTheme.mono(
+                              9,
+                              color: _kAccent,
+                            ).copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            note,
+                            style: const TextStyle(
+                              color: AppTheme.text,
+                              fontSize: 13,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_canEditQuestions &&
+                      (status == 'draft' || status == 'changes_requested')) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: AppTheme.primaryButton(),
+                        onPressed: _submitting || _saving
+                            ? null
+                            : _submitForReview,
+                        icon: _submitting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.send_outlined, size: 18),
+                        label: Text(
+                          status == 'changes_requested'
+                              ? 'Resubmit for review'
+                              : 'Submit for review',
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (status == 'pending') ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Waiting for an admin to review this exam.',
+                      style: TextStyle(color: AppTheme.mutedText, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _returningToDraft || _saving
+                            ? null
+                            : _returnToDraft,
+                        icon: _returningToDraft
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.undo_outlined, size: 18),
+                        label: Text(
+                          _returningToDraft
+                              ? 'Returning to draft...'
+                              : 'Return to draft',
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (!_canEditQuestions &&
+                      status != 'pending' &&
+                      status != 'draft' &&
+                      status != 'changes_requested')
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'This is a read-only view. Questions are locked after submission or completion.',
+                        style: TextStyle(
+                          color: AppTheme.mutedText,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -368,7 +905,10 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        AppTheme.sectionHeader(_typeIcon(type), _typeLabel(type)),
+        _sectionHeader(
+          _typeIcon(type),
+          '${_typeLabel(type)} · ${items.length}',
+        ),
         for (var i = 0; i < items.length; i++)
           _buildQuestionCard(items[i], i + 1),
       ],
@@ -404,15 +944,15 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _kAccent.withOpacity(.15),
+                    color: _kAccentSoft,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     'Q$number',
-                    style: const TextStyle(
+                    style: AppTheme.mono(
+                      12,
                       color: _kAccent,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    ).copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 if (q.isNew) ...[
@@ -437,18 +977,19 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                   ),
                 ],
                 const Spacer(),
-                IconButton(
-                  tooltip: marked ? 'Undo delete' : 'Delete question',
-                  style: IconButton.styleFrom(
-                    backgroundColor: (marked ? _kAccent : AppTheme.error)
-                        .withOpacity(.15),
+                if (_canEditQuestions)
+                  IconButton(
+                    tooltip: marked ? 'Undo delete' : 'Delete question',
+                    style: IconButton.styleFrom(
+                      backgroundColor: (marked ? _kAccent : AppTheme.error)
+                          .withValues(alpha: 0.15),
+                    ),
+                    icon: Icon(
+                      marked ? Icons.undo : Icons.delete_outline,
+                      color: marked ? _kAccent : AppTheme.error,
+                    ),
+                    onPressed: () => _toggleMarkForDelete(q),
                   ),
-                  icon: Icon(
-                    marked ? Icons.undo : Icons.delete_outline,
-                    color: marked ? _kAccent : AppTheme.error,
-                  ),
-                  onPressed: () => _toggleMarkForDelete(q),
-                ),
               ],
             ),
 
@@ -458,7 +999,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(.15),
+                  color: AppTheme.error.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.error),
                 ),
@@ -476,7 +1017,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
             // question text
             TextFormField(
               controller: q.questionTextController,
-              enabled: !marked,
+              enabled: _canEditQuestions && !marked,
               decoration: AppTheme.inputDecoration(
                 'Question',
                 icon: Icons.help_outline,
@@ -490,11 +1031,11 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
 
             // type specific fields
             if (q.type == 'multiple-choice')
-              _buildMultipleChoiceFields(q, marked)
+              _buildMultipleChoiceFields(q, marked || !_canEditQuestions)
             else if (q.type == 'true-false')
-              _buildTrueFalseFields(q, marked)
+              _buildTrueFalseFields(q, marked || !_canEditQuestions)
             else if (q.type == 'matching')
-              _buildMatchingFields(q, marked),
+              _buildMatchingFields(q, marked || !_canEditQuestions),
           ],
         ),
       ),
@@ -666,43 +1207,84 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   }
 
   Widget _buildActionBar() {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: AppTheme.cardDecoration(),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: _kAccent),
-                    foregroundColor: _kText,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+    // Locked exams (pending / approved / finished): read-only, just go back.
+    if (!_canEditQuestions) {
+      return Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.header,
+          border: Border(top: BorderSide(color: AppTheme.line)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: _kAccent),
+                      foregroundColor: _kText,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to exams'),
+                    onPressed: () => context.go('/teacher-exams'),
                   ),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Question'),
-                  onPressed: _saving ? null : _showAddQuestionDialog,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: AppTheme.primaryButton(),
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_saving ? 'Saving...' : 'Save Changes'),
-                  onPressed: _saving ? null : _saveAll,
-                ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppTheme.header,
+        border: Border(top: BorderSide(color: AppTheme.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: _kAccent),
+                        foregroundColor: _kText,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Question'),
+                      onPressed: _saving ? null : _showAddQuestionDialog,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: AppTheme.primaryButton(),
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save),
+                      label: Text(_saving ? 'Saving...' : 'Save Changes'),
+                      onPressed: _saving ? null : _saveAll,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -710,58 +1292,69 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, color: AppTheme.error, size: 40),
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.error),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _kAccent),
-                  foregroundColor: _kText,
-                ),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-                onPressed: _loadQuestions,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
+    final pad = MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0;
     return Column(
       children: [
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              _buildHero(),
-              if (_questions.isEmpty) ...[
-                const SizedBox(height: 16),
-                AppTheme.emptyCard(
-                  Icons.quiz_outlined,
-                  'No questions found for this exam.',
-                ),
-              ] else ...[
-                _buildGroup('multiple-choice', _byType('multiple-choice')),
-                _buildGroup('true-false', _byType('true-false')),
-                _buildGroup('matching', _byType('matching')),
-              ],
-              const SizedBox(height: 12),
-            ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: ListView(
+                padding: EdgeInsets.all(pad),
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _approvalCard(),
+                  const SizedBox(height: 16),
+                  _buildChips(),
+                  if (_loading) ...[
+                    const SizedBox(height: 20),
+                    const Center(
+                      child: CircularProgressIndicator(color: _kAccent),
+                    ),
+                  ] else if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: AppTheme.cardDecoration(),
+                      child: Column(
+                        children: [
+                          Icon(Icons.error_outline, color: _kAccent, size: 36),
+                          const SizedBox(height: 10),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: _kAccent),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: _kAccent),
+                              foregroundColor: _kText,
+                            ),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry loading questions'),
+                            onPressed: _loadQuestions,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (_questions.isEmpty) ...[
+                    const SizedBox(height: 16),
+                    AppTheme.emptyCard(
+                      Icons.quiz_outlined,
+                      'No questions found for this exam.',
+                    ),
+                  ] else ...[
+                    _buildGroup('multiple-choice', _byType('multiple-choice')),
+                    _buildGroup('true-false', _byType('true-false')),
+                    _buildGroup('matching', _byType('matching')),
+                  ],
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
           ),
         ),
         _buildActionBar(),
@@ -773,22 +1366,7 @@ class _EditQuestionPageState extends State<EditQuestionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        toolbarHeight: 80,
-        titleSpacing: 16,
-        backgroundColor: AppTheme.header,
-        foregroundColor: AppTheme.text,
-        surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: [
-            AppTheme.appBarIcon(Icons.quiz_outlined),
-            const SizedBox(width: 12),
-            const Text('Edit Exam Questions'),
-          ],
-        ),
-      ),
-      body: _buildBody(),
+      body: SafeArea(child: _buildBody()),
     );
   }
 }
@@ -1208,10 +1786,7 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
             const SizedBox(height: 12),
             Text(
               _validationMessage!,
-              style: TextStyle(
-                color: AppTheme.error,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: _kAccent, fontWeight: FontWeight.w600),
             ),
           ],
         ],
